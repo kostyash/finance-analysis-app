@@ -15,7 +15,7 @@ const SignIn: React.FC = () => {
   const location = useLocation();
 
   // Get the return path from location state or default to home
-  const from = (location.state as any)?.from?.pathname || '/';
+  const from = location.state?.from?.pathname || '/';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,11 +25,11 @@ const SignIn: React.FC = () => {
     try {
       await login(email, password);
       navigate(from, { replace: true });
-    } catch (err: any) {
-      if (err.code === 'UserNotConfirmedException') {
+    } catch (err: unknown) {
+      if ((err as { code?: string }).code === 'UserNotConfirmedException') {
         navigate(`/confirm?email=${encodeURIComponent(email)}`);
       } else {
-        setError(err.message || 'Failed to sign in');
+        setError((err as Error).message || 'Failed to sign in');
       }
     } finally {
       setIsLoading(false);

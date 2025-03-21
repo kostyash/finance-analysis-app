@@ -21,8 +21,12 @@ const ForgotPassword: React.FC = () => {
     try {
       await forgotPassword(email);
       setIsCodeSent(true);
-    } catch (err: any) {
-      setError(err.message || 'Failed to process request');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Failed to process request');
+      }
     } finally {
       setIsLoading(false);
     }

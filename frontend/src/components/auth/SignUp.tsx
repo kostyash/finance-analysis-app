@@ -35,8 +35,12 @@ const SignUp: React.FC = () => {
     try {
       await signup(email, password);
       setIsSignedUp(true);
-    } catch (err: any) {
-      setError(err.message || 'Failed to sign up');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Failed to sign up');
+      }
     } finally {
       setIsLoading(false);
     }
