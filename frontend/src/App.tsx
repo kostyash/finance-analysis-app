@@ -1,25 +1,47 @@
 import React from 'react';
-import logo from './logo.svg';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import './App.css';
+import PortfolioPage from './components/portfolio/PortfolioPage';
+
+// Placeholder components until we build the real ones
+const AnalysisPage = () => <div>Analysis Page</div>;
+const ComparisonPage = () => <div>Comparison Page</div>;
+const WhatIfPage = () => <div>What-If Scenarios Page</div>;
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <Router>
+      <div className="App">
+        <header className="App-header">
+          <nav>
+            <ul className="nav-menu">
+              <li className="nav-logo">Financial Analysis App</li>
+              <li>
+                <Link to="/">Portfolio</Link>
+              </li>
+              <li>
+                <Link to="/analysis">Analysis</Link>
+              </li>
+              <li>
+                <Link to="/comparison">Comparison</Link>
+              </li>
+              <li>
+                <Link to="/what-if">What-If Scenarios</Link>
+              </li>
+            </ul>
+          </nav>
+        </header>
+
+        <main>
+          <Routes>
+            <Route path="/" element={<PortfolioPage />} />
+            <Route path="/analysis" element={<AnalysisPage />} />
+            <Route path="/comparison" element={<ComparisonPage />} />
+            <Route path="/what-if" element={<WhatIfPage />} />
+          </Routes>
+        </main>
+      </div>
+    </Router>
   );
 }
 

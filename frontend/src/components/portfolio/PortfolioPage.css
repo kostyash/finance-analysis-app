@@ -1,0 +1,128 @@
+.portfolio-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  .simulation-banner {
+    background-color: #e6f7ff;
+    border: 1px solid #91d5ff;
+    border-radius: 4px;
+    padding: 15px 20px;
+    margin-bottom: 20px;
+  }
+  
+  .simulation-banner h3 {
+    color: #1890ff;
+    margin: 0 0 10px 0;
+  }
+  
+  .simulation-banner p {
+    margin: 0;
+    color: #333;
+  }
+  
+  .summary-card, .portfolio-table-card {
+    background-color: white;
+    border-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  
+  .summary-stats {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 15px;
+  }
+  
+  .stat-item {
+    text-align: center;
+    flex: 1;
+  }
+  
+  .stat-label {
+    color: #8c8c8c;
+    font-size: 14px;
+    margin-bottom: 5px;
+  }
+  
+  .stat-value {
+    font-size: 18px;
+    font-weight: bold;
+  }
+  
+  .positive {
+    color: #52c41a;
+  }
+  
+  .negative {
+    color: #f5222d;
+  }
+  
+  .actions {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+  }
+  
+  .primary-button {
+    background-color: #1890ff;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .secondary-button {
+    background-color: white;
+    color: #1890ff;
+    border: 1px solid #1890ff;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .portfolio-table {
+    overflow-x: auto;
+  }
+  
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  th, td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #e8e8e8;
+  }
+  
+  th {
+    background-color: #fafafa;
+    font-weight: 500;
+  }
+  
+  tr:nth-child(even) {
+    background-color: #fafafa;
+  }
+  
+  .edit-button, .delete-button {
+    background: none;
+    border: 1px solid #d9d9d9;
+    border-radius: 4px;
+    padding: 4px 8px;
+    margin-right: 5px;
+    cursor: pointer;
+  }
+  
+  .edit-button:hover {
+    color: #1890ff;
+    border-color: #1890ff;
+  }
+  
+  .delete-button:hover {
+    color: #f5222d;
+    border-color: #f5222d;
+  }
