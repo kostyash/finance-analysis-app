@@ -20,6 +20,10 @@ jobs:
         run: |
           cd cdk-infra
           npm install
+          cd lambda/stock-data
+          npm install
+          npm run build
+          cd ../..
           npx cdk deploy --require-approval never
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}

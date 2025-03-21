@@ -48,7 +48,7 @@ export class CdkInfraStack extends cdk.Stack {
       code: lambda.Code.fromAsset("lambda/stock-data/dist"), // Point to the dist directory
       handler: "index.handler",
       environment: {
-        ALPHA_VANTAGE_API_KEY: "YOUR_API_KEY", // Replace with your API key
+        ALPHA_VANTAGE_API_KEY: "LSMICCSD8CNIEXRV", // Replace with your API key
       },
       timeout: cdk.Duration.seconds(10),
       memorySize: 128,
