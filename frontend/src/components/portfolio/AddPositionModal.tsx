@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import './ModalStyles.css';
 import { PositionInput } from '../../types';
+import { getStockData } from '../../services/stockService';
 
 interface AddPositionModalProps {
   isOpen: boolean;
@@ -17,8 +18,38 @@ const AddPositionModal: React.FC<AddPositionModalProps> = ({ isOpen, onClose, on
   });
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [isLookingUp, setIsLookingUp] = useState<boolean>(false);
+  const [stockDataLoaded, setStockDataLoaded] = useState<boolean>(false);
+  const [stockLookupError, setStockLookupError] = useState<string>('');
 
   if (!isOpen) return null;
+
+  const lookupStockData = async () => {
+    if (!formData.ticker) {
+      setStockLookupError('Please enter a stock symbol');
+      return;
+    }
+
+    setIsLookingUp(true);
+    setStockLookupError('');
+    setStockDataLoaded(false);
+
+    try {
+      const data = await getStockData(formData.ticker);
+
+      // Update form with current price
+      setFormData((prev) => ({
+        ...prev,
+        purchasePrice: data.price,
+      }));
+
+      setStockDataLoaded(true);
+    } catch (error) {
+      setStockLookupError('Could not find stock data. Please check the symbol.');
+    } finally {
+      setIsLookingUp(false);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -77,13 +108,30 @@ const AddPositionModal: React.FC<AddPositionModalProps> = ({ isOpen, onClose, on
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Stock Symbol</label>
-            <input
-              type="text"
-              name="ticker"
-              value={formData.ticker}
-              onChange={handleChange}
-              placeholder="e.g., AAPL"
-            />
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input
+                type="text"
+                name="ticker"
+                value={formData.ticker}
+                onChange={handleChange}
+                placeholder="e.g., AAPL"
+                style={{ flex: 1 }}
+              />
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={lookupStockData}
+                disabled={isLookingUp || !formData.ticker}
+              >
+                {isLookingUp ? 'Loading...' : 'Lookup'}
+              </button>
+            </div>
+            {stockLookupError && <div className="error">{stockLookupError}</div>}
+            {stockDataLoaded && (
+              <div style={{ color: '#52c41a', fontSize: '12px', marginTop: '5px' }}>
+                Current price loaded
+              </div>
+            )}
             {errors.ticker && <div className="error">{errors.ticker}</div>}
           </div>
 

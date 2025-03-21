@@ -33,6 +33,7 @@ jobs:
           npm run build
         env:
           REACT_APP_CLOUDFRONT_URL: https://d3fv9rqnngo39l.cloudfront.net
+          REACT_APP_API_URL: https://s7eesbmx8i.execute-api.il-central-1.amazonaws.com/prod
 
       - name: Deploy to S3
         uses: jakejarvis/s3-sync-action@master
