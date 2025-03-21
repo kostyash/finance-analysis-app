@@ -1,12 +1,10 @@
 import * as cdk from "aws-cdk-lib";
-import { Construct } from "constructs";
-import * as s3 from "aws-cdk-lib/aws-s3";
+import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as lambda from "aws-cdk-lib/aws-lambda";
-import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
-import * as apigateway from "aws-cdk-lib/aws-apigateway";
-import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
+import * as s3 from "aws-cdk-lib/aws-s3";
+import { Construct } from "constructs";
 import path = require("path");
 
 export class CdkInfraStack extends cdk.Stack {
@@ -45,19 +43,14 @@ export class CdkInfraStack extends cdk.Stack {
     });
 
     // Stock data Lambda function
-    const stockDataFunction = new NodejsFunction(this, "StockDataFunction", {
-      entry: path.join(__dirname, "../lambda/stock-data/index.ts"),
-      handler: "handler",
+    const stockDataFunction = new lambda.Function(this, "StockDataFunction", {
       runtime: lambda.Runtime.NODEJS_18_X,
-      bundling: {
-        minify: true,
-        externalModules: ["aws-sdk"], // AWS SDK is available in the Lambda environment
-      },
+      code: lambda.Code.fromAsset("lambda/stock-data/dist"),
+      handler: "index.handler",
       environment: {
         ALPHA_VANTAGE_API_KEY:
           process.env.ALPHA_VANTAGE_API_KEY || "YOUR_API_KEY",
       },
-      timeout: cdk.Duration.seconds(10),
     });
 
     const api = new apigateway.RestApi(this, "FinanceApi", {

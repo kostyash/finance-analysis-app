@@ -18,8 +18,14 @@ jobs:
 
       - name: Deploy CDK Stack
         run: |
-          cd cdk-infra
-          npm install         
+          cd cdk-infra/lambda/stock-data
+          npm install
+          npm run build
+          cp package.json dist/
+          cd dist
+          npm install --production
+          cd ../../../
+          npm install
           npx cdk deploy --require-approval never
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
