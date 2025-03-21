@@ -108,14 +108,14 @@ const AddPositionModal: React.FC<AddPositionModalProps> = ({ isOpen, onClose, on
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Stock Symbol</label>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div className="input-with-button">
               <input
+                className="input "
                 type="text"
                 name="ticker"
                 value={formData.ticker}
                 onChange={handleChange}
                 placeholder="e.g., AAPL"
-                style={{ flex: 1 }}
               />
               <button
                 type="button"
@@ -127,11 +127,7 @@ const AddPositionModal: React.FC<AddPositionModalProps> = ({ isOpen, onClose, on
               </button>
             </div>
             {stockLookupError && <div className="error">{stockLookupError}</div>}
-            {stockDataLoaded && (
-              <div style={{ color: '#52c41a', fontSize: '12px', marginTop: '5px' }}>
-                Current price loaded
-              </div>
-            )}
+            {stockDataLoaded && <div className="success ">Current price loaded</div>}
             {errors.ticker && <div className="error">{errors.ticker}</div>}
           </div>
 

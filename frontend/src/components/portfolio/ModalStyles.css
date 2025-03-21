@@ -80,3 +80,17 @@
     font-size: 12px;
     margin-top: 5px;
   }
+  .input-with-button {
+    display: flex;
+    gap: 8px;
+  }
+  
+  .input-with-button input {
+    flex: 1;
+  }
+  
+  .success {
+    color: #52c41a;
+    font-size: 12px;
+    margin-top: 5px;
+  }
