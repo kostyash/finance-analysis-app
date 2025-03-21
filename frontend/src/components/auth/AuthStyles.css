@@ -1,0 +1,108 @@
+/* src/components/auth/AuthStyles.css */
+.auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: calc(100vh - 60px);
+    padding: 20px;
+    background-color: #f5f7fa;
+  }
+  
+  .auth-card {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    width: 100%;
+    max-width: 450px;
+  }
+  
+  .auth-card h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    text-align: center;
+    color: #001529;
+  }
+  
+  .auth-card p {
+    margin-bottom: 20px;
+    text-align: center;
+    color: #666;
+  }
+  
+  .form-group {
+    margin-bottom: 20px;
+  }
+  
+  .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+  
+  .form-group input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+  }
+  
+  .error-message {
+    background-color: #ffebee;
+    color: #d32f2f;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+  }
+  
+  .success-message {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+  }
+  
+  .forgot-password {
+    text-align: right;
+    margin-bottom: 20px;
+    font-size: 14px;
+  }
+  
+  .forgot-password a {
+    color: #1890ff;
+    text-decoration: none;
+  }
+  
+  .auth-footer {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 14px;
+  }
+  
+  .auth-footer a {
+    color: #1890ff;
+    text-decoration: none;
+  }
+  
+  .primary-button {
+    width: 100%;
+    padding: 12px;
+    background-color: #1890ff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  
+  .primary-button:hover {
+    background-color: #40a9ff;
+  }
+  
+  .primary-button:disabled {
+    background-color: #bfbfbf;
+    cursor: not-allowed;
+  }

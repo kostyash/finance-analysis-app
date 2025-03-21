@@ -44,3 +44,26 @@ main {
   background-color: #f0f2f5;
   min-height: calc(100vh - 60px);
 }
+/* Add to App.css */
+.nav-button {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0;
+  text-decoration: none;
+}
+
+.nav-button:hover {
+  color: #1890ff;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  font-size: 18px;
+  color: #1890ff;
+}

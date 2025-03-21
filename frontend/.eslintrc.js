@@ -1,5 +1,6 @@
 module.exports = {
   parser: '@typescript-eslint/parser',
+  plugins: ['@typescript-eslint'],
   parserOptions: {
     ecmaVersion: 2021,
     sourceType: 'module',
@@ -23,6 +24,14 @@ module.exports = {
     'react/react-in-jsx-scope': 'off', // Not needed in React 17+
     'react/prop-types': 'off', // Not needed when using TypeScript
     '@typescript-eslint/explicit-module-boundary-types': 'off',
+    'no-unused-vars': 'off',
+    '@typescript-eslint/no-unused-vars': [
+      'error',
+      {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_|[iI]nterface|[tT]ype', // Ignore variables starting with _ or interface properties
+      },
+    ],
     'prettier/prettier': [
       'error',
       {
