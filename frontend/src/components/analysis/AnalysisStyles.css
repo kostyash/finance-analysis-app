@@ -1,0 +1,286 @@
+/* src/components/analysis/AnalysisStyles.css */
+.analysis-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  .analysis-tabs {
+    display: flex;
+    overflow-x: auto;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  
+  .analysis-tabs button {
+    background: none;
+    border: none;
+    padding: 12px 20px;
+    font-size: 15px;
+    cursor: pointer;
+    position: relative;
+    white-space: nowrap;
+  }
+  
+  .analysis-tabs button.active {
+    color: #1890ff;
+    font-weight: 500;
+  }
+  
+  .analysis-tabs button.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background-color: #1890ff;
+  }
+  
+  .filter-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-radius: 4px;
+  }
+  
+  .filter-group {
+    display: flex;
+    align-items: center;
+  }
+  
+  .filter-group label {
+    margin-right: 10px;
+    font-weight: 500;
+  }
+  
+  .filter-group select {
+    padding: 8px;
+    border: 1px solid #d9d9d9;
+    border-radius: 4px;
+    background-color: white;
+  }
+  
+  .performance-chart-container,
+  .technical-indicators-container,
+  .risk-analysis-container,
+  .benchmark-comparison-container,
+  .diversification-container {
+    background-color: white;
+    border-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+  }
+  
+  .performance-summary {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+  
+  .summary-card {
+    flex: 1;
+    background-color: #f9f9f9;
+    border-radius: 4px;
+    padding: 15px;
+  }
+  
+  .summary-card h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 16px;
+  }
+  
+  .summary-stats {
+    display: flex;
+    justify-content: space-between;
+  }
+  
+  .stat-item {
+    text-align: center;
+    flex: 1;
+  }
+  
+  .stat-label {
+    color: #8c8c8c;
+    font-size: 14px;
+    margin-bottom: 5px;
+  }
+  
+  .stat-value {
+    font-size: 18px;
+    font-weight: bold;
+  }
+  
+  .positive {
+    color: #52c41a;
+  }
+  
+  .negative {
+    color: #f5222d;
+  }
+  
+  .percentage {
+    font-size: 14px;
+    margin-left: 4px;
+  }
+  
+  .chart-container {
+    margin-top: 20px;
+  }
+  
+  .chart-container h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 16px;
+  }
+  
+  .indicator-selector {
+    display: flex;
+    overflow-x: auto;
+    margin-bottom: 20px;
+    gap: 10px;
+  }
+  
+  .indicator-selector button {
+    padding: 8px 16px;
+    border: 1px solid #d9d9d9;
+    border-radius: 4px;
+    background-color: white;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  
+  .indicator-selector button.active {
+    background-color: #1890ff;
+    color: white;
+    border-color: #1890ff;
+  }
+  
+  .indicator-explanation {
+    background-color: #f9f9f9;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 20px;
+  }
+  
+  .indicator-explanation h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 16px;
+  }
+  
+  .indicator-explanation p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #595959;
+  }
+  
+  .loading-spinner {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+    font-size: 16px;
+    color: #1890ff;
+  }
+  
+  .error-message {
+    padding: 15px;
+    background-color: #fff1f0;
+    border: 1px solid #ffccc7;
+    border-radius: 4px;
+    color: #f5222d;
+    margin-bottom: 20px;
+  }
+  
+  .no-data-message {
+    padding: 15px;
+    background-color: #f9f9f9;
+    border: 1px solid #d9d9d9;
+    border-radius: 4px;
+    color: #595959;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  
+  /* Risk Analysis styles */
+  .risk-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+  
+  .risk-metric-card {
+    background-color: white;
+    border: 1px solid #f0f0f0;
+    border-radius: 4px;
+    padding: 15px;
+  }
+  
+  .risk-metric-card h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 16px;
+  }
+  
+  .risk-metric-value {
+    font-size: 24px;
+    font-weight: bold;
+  }
+  
+  .risk-metric-label {
+    font-size: 14px;
+    color: #8c8c8c;
+  }
+  
+  /* Diversification styles */
+  .allocation-chart {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+  
+  .allocation-chart-container {
+    flex: 1;
+    background-color: white;
+    border: 1px solid #f0f0f0;
+    border-radius: 4px;
+    padding: 15px;
+  }
+  
+  .diversification-score {
+    text-align: center;
+    margin-top: 20px;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 4px;
+  }
+  
+  .diversification-score-value {
+    font-size: 36px;
+    font-weight: bold;
+    color: #1890ff;
+  }
+  
+  .diversification-score-label {
+    font-size: 16px;
+    color: #595959;
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .performance-summary,
+    .allocation-chart {
+      flex-direction: column;
+    }
+    
+    .risk-metrics {
+      grid-template-columns: 1fr;
+    }
+  }

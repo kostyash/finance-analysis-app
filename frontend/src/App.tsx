@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import './App.css';
 import PortfolioPage from './components/portfolio/PortfolioPage';
+import AnalysisPage from './components/analysis/AnalysisPage';
 import SignIn from './components/auth/SignIn';
 import SignUp from './components/auth/SignUp';
 import ConfirmAccount from './components/auth/ConfirmAccount';
@@ -11,7 +12,6 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 // Placeholder components until we build the real ones
-const AnalysisPage = () => <div>Analysis Page</div>;
 const ComparisonPage = () => <div>Comparison Page</div>;
 const WhatIfPage = () => <div>What-If Scenarios Page</div>;
 

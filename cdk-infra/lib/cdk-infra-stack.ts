@@ -2,9 +2,9 @@ import * as cdk from "aws-cdk-lib";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
-import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as cognito from "aws-cdk-lib/aws-cognito";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import { Construct } from "constructs";
 import path = require("path");
@@ -171,5 +171,85 @@ export class CdkInfraStack extends cdk.Stack {
       value: websiteBucket.bucketName,
       description: "The name of the S3 bucket",
     });
+
+    // Create a Lambda Layer for Python dependencies
+    const analyticsLayer = new lambda.LayerVersion(this, "AnalyticsLayer", {
+      code: lambda.Code.fromAsset("lambda-layer.zip"),
+      compatibleRuntimes: [lambda.Runtime.PYTHON_3_13],
+      description: "Dependencies for the Financial Analysis Lambda function",
+    });
+
+    // Create a Python Lambda function for advanced analytics
+    const analyticsFunction = new lambda.Function(this, "AnalyticsFunction", {
+      runtime: lambda.Runtime.PYTHON_3_13,
+      handler: "index.lambda_handler",
+      code: lambda.Code.fromAsset("lambda/analysis"), // This will be created in a separate directory
+      layers: [analyticsLayer],
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(30),
+      environment: {
+        PORTFOLIO_TABLE: portfolioTable.tableName,
+        POSITION_TABLE: positionTable.tableName,
+      },
+    });
+
+    // Grant the Lambda function read access to the DynamoDB tables
+    portfolioTable.grantReadData(analyticsFunction);
+    positionTable.grantReadData(analyticsFunction);
+
+    // Add an API Gateway endpoint for the analytics function
+    const analyticsResource = api.root.addResource("analysis");
+
+    // Add different resources for each type of analysis
+    const performanceResource = analyticsResource.addResource("performance");
+    performanceResource.addMethod(
+      "GET",
+      new apigateway.LambdaIntegration(analyticsFunction),
+      {
+        authorizer: authorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      }
+    );
+
+    const technicalResource = analyticsResource.addResource("technical");
+    technicalResource.addMethod(
+      "GET",
+      new apigateway.LambdaIntegration(analyticsFunction),
+      {
+        authorizer: authorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      }
+    );
+
+    const riskResource = analyticsResource.addResource("risk");
+    riskResource.addMethod(
+      "GET",
+      new apigateway.LambdaIntegration(analyticsFunction),
+      {
+        authorizer: authorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      }
+    );
+
+    const benchmarkResource = analyticsResource.addResource("benchmark");
+    benchmarkResource.addMethod(
+      "GET",
+      new apigateway.LambdaIntegration(analyticsFunction),
+      {
+        authorizer: authorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      }
+    );
+
+    const diversificationResource =
+      analyticsResource.addResource("diversification");
+    diversificationResource.addMethod(
+      "GET",
+      new apigateway.LambdaIntegration(analyticsFunction),
+      {
+        authorizer: authorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      }
+    );
   }
 }

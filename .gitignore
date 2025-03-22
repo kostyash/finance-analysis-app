@@ -34,3 +34,7 @@ __pycache__/
 .venv
 env/
 venv/
+
+# Python Lambda Layer files
+lambda-layer/
+lambda-layer.zip
