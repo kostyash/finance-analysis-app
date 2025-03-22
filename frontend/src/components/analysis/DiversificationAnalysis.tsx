@@ -4,6 +4,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recha
 import { getDiversificationAnalysis } from '../../services/analysisService';
 import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorMessage from '../common/ErrorMessage';
+import { DiversificationData } from '../../types/analysisTypes';
 
 const SECTOR_COLORS = [
   '#0088FE',
@@ -32,7 +33,7 @@ const ASSET_CLASS_COLORS = [
 ];
 
 const DiversificationAnalysis: React.FC = () => {
-  const [diversificationData, setDiversificationData] = useState<any>(null);
+  const [diversificationData, setDiversificationData] = useState<DiversificationData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,7 +68,14 @@ const DiversificationAnalysis: React.FC = () => {
     return <div className="no-data-message">No diversification data available.</div>;
   }
 
-  const formatPieData = (data: any[]) => {
+  interface AllocationItem {
+    sector?: string;
+    assetClass?: string;
+    percentage: number;
+    value: number;
+  }
+
+  const formatPieData = (data: AllocationItem[]) => {
     return data.map((item) => ({
       name: item.sector || item.assetClass,
       value: item.percentage,

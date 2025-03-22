@@ -13,6 +13,7 @@ import {
 import { getBenchmarkComparison } from '../../services/analysisService';
 import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorMessage from '../common/ErrorMessage';
+import { BenchmarkComparisonData, PerformanceData } from '../../types/analysisTypes';
 
 interface BenchmarkComparisonProps {
   period: string;
@@ -20,7 +21,7 @@ interface BenchmarkComparisonProps {
 }
 
 const BenchmarkComparison: React.FC<BenchmarkComparisonProps> = ({ period, benchmark }) => {
-  const [comparisonData, setComparisonData] = useState<any>(null);
+  const [comparisonData, setComparisonData] = useState<BenchmarkComparisonData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,7 +61,7 @@ const BenchmarkComparison: React.FC<BenchmarkComparisonProps> = ({ period, bench
   const firstBenchmarkValue = comparisonData.benchmarkTimeSeries[0].value;
 
   const normalizedChartData = comparisonData.portfolioTimeSeries.map(
-    (point: any, index: number) => {
+    (point: PerformanceData, index: number) => {
       const benchmarkPoint = comparisonData.benchmarkTimeSeries[index];
       return {
         date: new Date(point.date).toLocaleDateString(),

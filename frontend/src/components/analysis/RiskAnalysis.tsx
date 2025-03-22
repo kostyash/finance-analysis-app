@@ -4,13 +4,14 @@ import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recha
 import { getRiskAnalysis } from '../../services/analysisService';
 import ErrorMessage from '../common/ErrorMessage';
 import LoadingSpinner from '../common/LoadingSpinner';
+import { RiskAnalysisData } from '../../types/analysisTypes';
 
 interface RiskAnalysisProps {
   period: string;
 }
 
 const RiskAnalysis: React.FC<RiskAnalysisProps> = ({ period }) => {
-  const [riskData, setRiskData] = useState<any>(null);
+  const [riskData, setRiskData] = useState<RiskAnalysisData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,7 +21,7 @@ const RiskAnalysis: React.FC<RiskAnalysisProps> = ({ period }) => {
       setError(null);
 
       try {
-        const data = await getRiskAnalysis(period);
+        const data = (await getRiskAnalysis(period)) as RiskAnalysisData;
         setRiskData(data);
       } catch (err) {
         console.error('Error fetching risk analysis:', err);
@@ -119,32 +120,36 @@ const RiskAnalysis: React.FC<RiskAnalysisProps> = ({ period }) => {
             <thead>
               <tr>
                 <th></th>
-                {riskData.correlationMatrix[0].map((col: any) => (
+                {riskData.correlationMatrix[0].map((col: { ticker2: string }) => (
                   <th key={col.ticker2}>{col.ticker2}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {riskData.correlationMatrix.map((row: any[], rowIndex: number) => (
-                <tr key={rowIndex}>
-                  <th>{row[0].ticker1}</th>
-                  {row.map((cell: any, cellIndex: number) => (
-                    <td
-                      key={cellIndex}
-                      style={{
-                        backgroundColor:
-                          cell.correlation === 1
-                            ? '#f5f5f5'
-                            : cell.correlation > 0
-                              ? `rgba(0, 255, 0, ${Math.abs(cell.correlation) * 0.3})`
-                              : `rgba(255, 0, 0, ${Math.abs(cell.correlation) * 0.3})`,
-                      }}
-                    >
-                      {cell.correlation.toFixed(2)}
-                    </td>
-                  ))}
-                </tr>
-              ))}
+              {riskData.correlationMatrix.map(
+                (row: { ticker1: string; correlation: number }[], rowIndex: number) => (
+                  <tr key={rowIndex}>
+                    <th>{row[0].ticker1}</th>
+                    {row.map(
+                      (cell: { ticker1: string; correlation: number }, cellIndex: number) => (
+                        <td
+                          key={cellIndex}
+                          style={{
+                            backgroundColor:
+                              cell.correlation === 1
+                                ? '#f5f5f5'
+                                : cell.correlation > 0
+                                  ? `rgba(0, 255, 0, ${Math.abs(cell.correlation) * 0.3})`
+                                  : `rgba(255, 0, 0, ${Math.abs(cell.correlation) * 0.3})`,
+                          }}
+                        >
+                          {cell.correlation.toFixed(2)}
+                        </td>
+                      )
+                    )}
+                  </tr>
+                )
+              )}
             </tbody>
           </table>
         </div>

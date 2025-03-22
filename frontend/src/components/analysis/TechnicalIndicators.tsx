@@ -73,7 +73,11 @@ const TechnicalIndicators: React.FC<TechnicalIndicatorsProps> = ({ ticker }) => 
     return new Date(dateStr).toLocaleDateString();
   };
 
-  const getHistogramColor = (entry: any) => {
+  interface HistogramEntry {
+    histogram: number;
+  }
+
+  const getHistogramColor = (entry: HistogramEntry) => {
     return entry.histogram >= 0 ? '#4caf50' : '#f44336';
   };
 
