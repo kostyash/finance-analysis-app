@@ -17,6 +17,9 @@ def decimal_default(obj):
 def lambda_handler(event, context):
     """Main handler for portfolio analysis requests"""
     try:
+        print("Received event:", json.dumps(event))
+        print("Authorization context:", json.dumps(event.get('requestContext', {}).get('authorizer', {})))
+        
         # Get request details
         http_method = event.get('httpMethod')
         path_parameters = event.get('pathParameters', {})
@@ -24,8 +27,9 @@ def lambda_handler(event, context):
         
         # Get user ID from Cognito authorizer
         user_id = event.get('requestContext', {}).get('authorizer', {}).get('claims', {}).get('sub')
-        
+        print("User ID from authorizer:", user_id)
         if not user_id:
+            print("No user ID found in request, returning 401")
             return create_response(401, {'error': 'User not authenticated'})
         
         # Handle different types of analysis
