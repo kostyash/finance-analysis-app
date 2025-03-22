@@ -905,7 +905,8 @@ def create_response(status_code, body):
         'statusCode': status_code,
         'headers': {
             'Content-Type': 'application/json',
-            "Access-Control-Allow-Methods": "OPTIONS, GET, POST",
+            'Access-Control-Allow-Headers' : 'Content-Type, Authorization',
+            "Access-Control-Allow-Methods" : "OPTIONS, GET, POST",
             'Access-Control-Allow-Origin': '*',  # Allow CORS
             'Access-Control-Allow-Credentials': 'true'
         },

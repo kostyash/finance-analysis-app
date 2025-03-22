@@ -2,13 +2,19 @@
 import config from '../config';
 
 // Helper function to get authentication headers
-const getAuthHeader = (): { Authorization?: string } => {
+const getAuthHeader = (): { [key: string]: string } => {
   const tokenKey = Object.keys(localStorage).find(
     (key) => key.includes('CognitoIdentityServiceProvider') && key.includes('accessToken')
   );
   const token = tokenKey ? localStorage.getItem('accessToken') : null;
   console.log('Auth headers:', `Bearer ${token}`);
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  return {
+    Authorization: `Bearer ${token ? token : ''}`,
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  };
 };
 
 // Interface for performance analysis response
