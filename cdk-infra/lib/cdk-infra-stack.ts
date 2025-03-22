@@ -184,7 +184,13 @@ export class CdkInfraStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_9,
       handler: "index.lambda_handler",
       code: lambda.Code.fromAsset("lambda/analysis"), // This will be created in a separate directory
-      layers: [analyticsLayer],
+      layers: [
+        lambda.LayerVersion.fromLayerVersionArn(
+          this,
+          "ExistingAnalyticsLayer", // Use a different logical ID
+          "arn:aws:lambda:il-central-1:084375577657:layer:AnalyticsLayer:1"
+        ),
+      ],
       memorySize: 256,
       timeout: cdk.Duration.seconds(30),
       environment: {

@@ -6,7 +6,7 @@ const getAuthHeader = (): { Authorization?: string } => {
   const tokenKey = Object.keys(localStorage).find(
     (key) => key.includes('CognitoIdentityServiceProvider') && key.includes('accessToken')
   );
-  const token = tokenKey ? localStorage.getItem(tokenKey) : null;
+  const token = tokenKey ? localStorage.getItem('accessToken') : null;
   console.log('Auth headers:', `Bearer ${token}`);
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
