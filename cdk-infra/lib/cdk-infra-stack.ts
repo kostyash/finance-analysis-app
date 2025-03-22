@@ -175,13 +175,13 @@ export class CdkInfraStack extends cdk.Stack {
     // Create a Lambda Layer for Python dependencies
     const analyticsLayer = new lambda.LayerVersion(this, "AnalyticsLayer", {
       code: lambda.Code.fromAsset("lambda-layer.zip"),
-      compatibleRuntimes: [lambda.Runtime.PYTHON_3_13],
+      compatibleRuntimes: [lambda.Runtime.PYTHON_3_9],
       description: "Dependencies for the Financial Analysis Lambda function",
     });
 
     // Create a Python Lambda function for advanced analytics
     const analyticsFunction = new lambda.Function(this, "AnalyticsFunction", {
-      runtime: lambda.Runtime.PYTHON_3_13,
+      runtime: lambda.Runtime.PYTHON_3_9,
       handler: "index.lambda_handler",
       code: lambda.Code.fromAsset("lambda/analysis"), // This will be created in a separate directory
       layers: [analyticsLayer],
