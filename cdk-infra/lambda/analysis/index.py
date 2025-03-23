@@ -28,16 +28,11 @@ def lambda_handler(event, context):
             },
             'body': ''
         }
-    try:
-        # Add detailed logging
-        print("FULL EVENT:", json.dumps(event))
-        print("REQUEST CONTEXT:", json.dumps(event.get('requestContext', {})))
-        print("AUTHORIZER:", json.dumps(event.get('requestContext', {}).get('authorizer', {})))
+    try:        
         
         # Get request details
         http_method = event.get('httpMethod')
-        path_parameters = event.get('pathParameters', {})
-        print("path_parameters:", path_parameters)
+        path_parameters = event.get('pathParameters', {})      
         query_parameters = event.get('queryStringParameters', {}) or {}
         
          # Try multiple ways to get the user ID
@@ -63,12 +58,9 @@ def lambda_handler(event, context):
         if not user_id:
             user_id = auth_context.get('claims', {}).get('cognito:username')
             
-        print("EXTRACTED USER ID:", user_id)
-
-
+       
         # Extract resource path to determine which analysis function to call
-        resource_path = event.get('resource', '')
-        print("RESOURCE PATH:", resource_path)
+        resource_path = event.get('resource', '')       
         
         if not user_id:
             return {
