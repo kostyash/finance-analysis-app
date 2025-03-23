@@ -133,12 +133,24 @@ export class CdkInfraStack extends cdk.Stack {
     const api = new apigateway.RestApi(this, "FinanceApi", {
       restApiName: "Finance Analysis API",
       description: "API for finance analysis application",
+      deploy: true, // Enable automatic deployment
+      deployOptions: {
+        stageName: "prod", // This creates a 'prod' stage
+        description: "Production stage",
+      },
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,
+        allowHeaders: [
+          "Content-Type",
+          "X-Amz-Date",
+          "Authorization",
+          "X-Api-Key",
+          "X-Amz-Security-Token",
+        ],
+        allowCredentials: true,
       },
     });
-
     // Apply authorizer to protected routes
     const protectedResource = api.root.addResource("portfolio");
     protectedResource.addMethod(
@@ -188,7 +200,7 @@ export class CdkInfraStack extends cdk.Stack {
         lambda.LayerVersion.fromLayerVersionArn(
           this,
           "ExistingAnalyticsLayer", // Use a different logical ID
-          "arn:aws:lambda:il-central-1:084375577657:layer:AnalyticsLayer:1"
+          "arn:aws:lambda:il-central-1:084375577657:layer:mybestlayer:1"
         ),
       ],
       memorySize: 256,

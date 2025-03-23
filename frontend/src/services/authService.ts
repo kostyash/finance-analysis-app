@@ -97,7 +97,7 @@ export const signIn = (email: string, password: string): Promise<UserAttributes>
           }
           // Store tokens in localStorage
           localStorage.setItem('accessToken', result.getAccessToken().getJwtToken());
-
+          localStorage.setItem('idToken', result.getIdToken().getJwtToken());
           resolve(userAttributes);
         });
       },

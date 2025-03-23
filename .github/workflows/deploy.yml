@@ -40,8 +40,8 @@ jobs:
         env:
           REACT_APP_USER_POOL_ID: ${{ secrets.REACT_APP_USER_POOL_ID }}
           REACT_APP_CLIENT_ID: ${{ secrets.REACT_APP_CLIENT_ID }}
-          REACT_APP_CLOUDFRONT_URL: https://d3fv9rqnngo39l.cloudfront.net
-          REACT_APP_API_URL: https://s7eesbmx8i.execute-api.il-central-1.amazonaws.com/prod
+          REACT_APP_CLOUDFRONT_URL: ${{ secrets.REACT_APP_CLOUDFRONT_URL }}
+          REACT_APP_API_URL: ${{ secrets.REACT_APP_API_URL }}
 
       - name: Deploy to S3
         uses: jakejarvis/s3-sync-action@master

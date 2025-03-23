@@ -1,21 +1,38 @@
 // src/services/analysisService.ts
+import axios from 'axios';
 import config from '../config';
 
-// Helper function to get authentication headers
-const getAuthHeader = (): { [key: string]: string } => {
-  const tokenKey = Object.keys(localStorage).find(
-    (key) => key.includes('CognitoIdentityServiceProvider') && key.includes('accessToken')
-  );
-  const token = tokenKey ? localStorage.getItem('accessToken') : null;
-  console.log('Auth headers:', `Bearer ${token}`);
-  return {
-    Authorization: `Bearer ${token ? token : ''}`,
-    'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  };
-};
+const api = axios.create({
+  baseURL: config.apiGateway.URL,
+  timeout: 10000,
+  withCredentials: false, // Important for CORS with Cognito
+});
+
+// Add request interceptor for authentication
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('idToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Handle errors better
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response) {
+      console.error('API Error:', error.response.status, error.response.data);
+    } else if (error.request) {
+      console.error('Network Error:', error.message);
+    } else {
+      console.error('Error:', error.message);
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Rest of your service functions using api.get()...
 
 // Interface for performance analysis response
 export interface PerformanceResponse {
@@ -117,19 +134,10 @@ export const getPortfolioPerformance = async (
   portfolioId = 'default'
 ): Promise<PerformanceResponse['portfolioPerformance']> => {
   try {
-    const response = await fetch(
-      `${config.apiGateway.URL}/analysis/performance?period=${period}&portfolioId=${portfolioId}`,
-      {
-        headers: getAuthHeader(),
-      }
+    const response = await api.get(
+      `/analysis/performance?period=${period}&portfolioId=${portfolioId}`
     );
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch portfolio performance data');
-    }
-
-    const data = (await response.json()) as PerformanceResponse;
-    return data.portfolioPerformance;
+    return response.data.portfolioPerformance;
   } catch (error) {
     console.error('Error fetching portfolio performance:', error);
     throw error;
@@ -141,15 +149,8 @@ export const getTechnicalIndicators = async (
   ticker: string
 ): Promise<TechnicalIndicatorsResponse> => {
   try {
-    const response = await fetch(`${config.apiGateway.URL}/analysis/technical?ticker=${ticker}`, {
-      headers: getAuthHeader(),
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch technical indicators');
-    }
-
-    return (await response.json()) as TechnicalIndicatorsResponse;
+    const response = await api.get(`/analysis/technical?ticker=${ticker}`);
+    return response.data;
   } catch (error) {
     console.error('Error fetching technical indicators:', error);
     throw error;
@@ -162,19 +163,8 @@ export const getRiskAnalysis = async (
   portfolioId = 'default'
 ): Promise<RiskAnalysisResponse['riskAnalysis']> => {
   try {
-    const response = await fetch(
-      `${config.apiGateway.URL}/analysis/risk?period=${period}&portfolioId=${portfolioId}`,
-      {
-        headers: getAuthHeader(),
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch risk analysis');
-    }
-
-    const data = (await response.json()) as RiskAnalysisResponse;
-    return data.riskAnalysis;
+    const response = await api.get(`/analysis/risk?period=${period}&portfolioId=${portfolioId}`);
+    return response.data.riskAnalysis;
   } catch (error) {
     console.error('Error fetching risk analysis:', error);
     throw error;
@@ -188,19 +178,10 @@ export const getBenchmarkComparison = async (
   portfolioId = 'default'
 ): Promise<BenchmarkComparisonResponse['benchmarkComparison']> => {
   try {
-    const response = await fetch(
-      `${config.apiGateway.URL}/analysis/benchmark?period=${period}&benchmark=${benchmark}&portfolioId=${portfolioId}`,
-      {
-        headers: getAuthHeader(),
-      }
+    const response = await api.get(
+      `/analysis/benchmark?period=${period}&benchmark=${benchmark}&portfolioId=${portfolioId}`
     );
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch benchmark comparison');
-    }
-
-    const data = (await response.json()) as BenchmarkComparisonResponse;
-    return data.benchmarkComparison;
+    return response.data.benchmarkComparison;
   } catch (error) {
     console.error('Error fetching benchmark comparison:', error);
     throw error;
@@ -212,19 +193,8 @@ export const getDiversificationAnalysis = async (
   portfolioId = 'default'
 ): Promise<DiversificationResponse['diversificationAnalysis']> => {
   try {
-    const response = await fetch(
-      `${config.apiGateway.URL}/analysis/diversification?portfolioId=${portfolioId}`,
-      {
-        headers: getAuthHeader(),
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch diversification analysis');
-    }
-
-    const data = (await response.json()) as DiversificationResponse;
-    return data.diversificationAnalysis;
+    const response = await api.get(`/analysis/diversification?portfolioId=${portfolioId}`);
+    return response.data.diversificationAnalysis;
   } catch (error) {
     console.error('Error fetching diversification analysis:', error);
     throw error;

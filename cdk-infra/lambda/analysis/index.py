@@ -16,46 +16,86 @@ def decimal_default(obj):
 
 def lambda_handler(event, context):
     """Main handler for portfolio analysis requests"""
+    # Handle OPTIONS requests (preflight)
+    if event.get('httpMethod') == 'OPTIONS':
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
+                'Access-Control-Allow-Methods': 'GET,OPTIONS',
+                'Access-Control-Allow-Credentials': 'true'
+            },
+            'body': ''
+        }
     try:
-        print("Received event:", json.dumps(event))
-        print("Authorization context:", json.dumps(event.get('requestContext', {}).get('authorizer', {})))
+        # Add detailed logging
+        print("FULL EVENT:", json.dumps(event))
+        print("REQUEST CONTEXT:", json.dumps(event.get('requestContext', {})))
+        print("AUTHORIZER:", json.dumps(event.get('requestContext', {}).get('authorizer', {})))
         
         # Get request details
         http_method = event.get('httpMethod')
         path_parameters = event.get('pathParameters', {})
+        print("path_parameters:", path_parameters)
         query_parameters = event.get('queryStringParameters', {}) or {}
         
-        # Get user ID from Cognito authorizer
-        user_id = event.get('requestContext', {}).get('authorizer', {}).get('claims', {}).get('sub')
-        print("User ID from authorizer:", user_id)
+         # Try multiple ways to get the user ID
+        auth_context = event.get('requestContext', {}).get('authorizer', {})
+        
+        # Option 1: Direct sub claim access
+        user_id = auth_context.get('claims', {}).get('sub')
+
+        # Option 2: Check if sub is directly in authorizer (not nested under claims)
         if not user_id:
-            print("No user ID found in request, returning 401")
-            return create_response(401, {'error': 'User not authenticated'})
+            user_id = auth_context.get('sub')
+
+
+             # Option 3: Check if claims is a string and parse it
+        if not user_id and 'claims' in auth_context and isinstance(auth_context['claims'], str):
+            try:
+                claims = json.loads(auth_context['claims'])
+                user_id = claims.get('sub')
+            except:
+                pass
+        
+        # Option 4: Try cognito:username if sub is not available
+        if not user_id:
+            user_id = auth_context.get('claims', {}).get('cognito:username')
+            
+        print("EXTRACTED USER ID:", user_id)
+
+
+        # Extract resource path to determine which analysis function to call
+        resource_path = event.get('resource', '')
+        print("RESOURCE PATH:", resource_path)
+        
+        if not user_id:
+            return {
+                'statusCode': 401,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+                    'Access-Control-Allow-Methods': 'OPTIONS,GET,POST'
+                },
+                'body': json.dumps({'error': 'User not authenticated'})
+            }
         
         # Handle different types of analysis
         if http_method == 'GET':
-            # Portfolio performance analysis
-            if path_parameters and path_parameters.get('type') == 'performance':
+            if resource_path == '/analysis/performance':
                 return portfolio_performance_analysis(user_id, query_parameters)
-            
-            # Technical indicators
-            elif path_parameters and path_parameters.get('type') == 'technical':
+            elif resource_path == '/analysis/technical':
                 return technical_indicators(user_id, query_parameters)
-            
-            # Risk analysis
-            elif path_parameters and path_parameters.get('type') == 'risk':
+            elif resource_path == '/analysis/risk':
                 return risk_analysis(user_id, query_parameters)
-            
-            # Comparison with benchmarks
-            elif path_parameters and path_parameters.get('type') == 'benchmark':
+            elif resource_path == '/analysis/benchmark':
                 return benchmark_comparison(user_id, query_parameters)
-                
-            # Diversification analysis
-            elif path_parameters and path_parameters.get('type') == 'diversification':
+            elif resource_path == '/analysis/diversification':
                 return diversification_analysis(user_id, query_parameters)
-                
             else:
-                return create_response(400, {'error': 'Invalid analysis type'})
+                return create_response(400, {'error': f'Invalid analysis endpoint: {resource_path}'})
         
         return create_response(400, {'error': 'Invalid request method'})
         
@@ -900,14 +940,13 @@ def calculate_concentration(positions, total_value):
     }
 
 def create_response(status_code, body):
-    """Create a properly formatted API Gateway response"""
     return {
         'statusCode': status_code,
         'headers': {
             'Content-Type': 'application/json',
-            'Access-Control-Allow-Headers' : 'Content-Type, Authorization',
-            "Access-Control-Allow-Methods" : "OPTIONS, GET, POST",
-            'Access-Control-Allow-Origin': '*',  # Allow CORS
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
+            'Access-Control-Allow-Methods': 'GET,OPTIONS',
             'Access-Control-Allow-Credentials': 'true'
         },
         'body': json.dumps(body, default=decimal_default)
