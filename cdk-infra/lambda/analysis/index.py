@@ -327,34 +327,64 @@ def diversification_analysis(user_id, query_params):
 
 def get_portfolio_positions(user_id, portfolio_id):
     """Retrieve portfolio positions from DynamoDB"""
-    # In a real implementation, you would query DynamoDB for the positions
-    # For this example, we'll return mock data
-    
-    # Uncomment this code when you have actual DynamoDB tables
-    """
-    portfolio_table = dynamodb.Table(os.environ['PORTFOLIO_TABLE'])
-    position_table = dynamodb.Table(os.environ['POSITION_TABLE'])
-    
-    # First verify the portfolio belongs to the user
-    portfolio_response = portfolio_table.get_item(
-        Key={
-            'userId': user_id,
-            'portfolioId': portfolio_id
-        }
-    )
-    
-    if 'Item' not in portfolio_response:
-        return []
-    
-    # Get positions for the portfolio
-    position_response = position_table.query(
-        KeyConditionExpression=boto3.dynamodb.conditions.Key('portfolioId').eq(portfolio_id)
-    )
-    
-    return position_response.get('Items', [])
-    """
-    
-    # Mock positions for demonstration
+    try:
+        # Get the portfolio table and position table
+        portfolio_table = dynamodb.Table(os.environ['PORTFOLIO_TABLE'])
+        position_table = dynamodb.Table(os.environ['POSITION_TABLE'])
+        
+        # First verify the portfolio belongs to the user
+        portfolio_response = portfolio_table.get_item(
+            Key={
+                'userId': user_id,
+                'portfolioId': portfolio_id
+            }
+        )
+        
+        if 'Item' not in portfolio_response:
+            print(f"Portfolio not found or does not belong to user: {user_id}, {portfolio_id}")
+            # If portfolio not found, check if it's a development environment
+            if os.environ.get('ENVIRONMENT') == 'development':
+                print("Using mock data for development")
+                return get_mock_positions()
+            return []
+        
+        # Get positions for the portfolio
+        position_response = position_table.query(
+            KeyConditionExpression=boto3.dynamodb.conditions.Key('portfolioId').eq(portfolio_id)
+        )
+        
+        positions = position_response.get('Items', [])
+        
+        # For security, verify each position belongs to the correct user
+        filtered_positions = [p for p in positions if p.get('userId') == user_id]
+        
+        # If no positions found and it's development environment, return mock data
+        if not filtered_positions and os.environ.get('ENVIRONMENT') == 'development':
+            print("No positions found, using mock data for development")
+            return get_mock_positions()
+        
+        # Ensure all positions have currentPrice if not already present
+        # This would be updated with real-time price data in production
+        for position in filtered_positions:
+            if 'currentPrice' not in position:
+                # In production, this would call a stock price API
+                # For now, estimate current price with a small random increase
+                purchase_price = float(position.get('purchasePrice', 100))
+                position['currentPrice'] = purchase_price * (1 + (np.random.random() * 0.2 - 0.05))
+        
+        return filtered_positions
+        
+    except Exception as e:
+        print(f"Error retrieving positions: {str(e)}")
+        # Fallback to mock data if there's an error and in development
+        if os.environ.get('ENVIRONMENT') == 'development':
+            print("Error occurred, using mock data for development")
+            return get_mock_positions()
+        # In production, propagate the error
+        raise
+
+def get_mock_positions():
+    """Return mock positions for demonstration or fallback"""
     return [
         {
             'ticker': 'AAPL',

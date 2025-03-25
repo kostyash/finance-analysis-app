@@ -1,6 +1,13 @@
 // src/services/analysisService.ts
 import axios from 'axios';
 import config from '../config';
+import {
+  BenchmarkComparisonResponse,
+  DiversificationResponse,
+  PerformanceResponse,
+  RiskAnalysisResponse,
+  TechnicalIndicatorsResponse,
+} from '../types/analysisTypes';
 
 const api = axios.create({
   baseURL: config.apiGateway.URL,
@@ -33,100 +40,6 @@ api.interceptors.response.use(
 );
 
 // Rest of your service functions using api.get()...
-
-// Interface for performance analysis response
-export interface PerformanceResponse {
-  portfolioPerformance: {
-    initialValue: number;
-    currentValue: number;
-    absoluteReturn: number;
-    percentageReturn: number;
-    maxDrawdown: number;
-    volatility: number;
-    sharpeRatio: number;
-    timeSeries: {
-      date: string;
-      value: number;
-    }[];
-  };
-}
-
-// Interface for technical indicators response
-export interface TechnicalIndicatorsResponse {
-  ticker: string;
-  indicators: {
-    sma: { date: string; sma: number }[];
-    ema: { date: string; ema: number }[];
-    rsi: { date: string; rsi: number }[];
-    macd: { date: string; macd: number; signal: number; histogram: number }[];
-    bollinger: { date: string; middle: number; upper: number; lower: number }[];
-  };
-}
-
-// Interface for risk analysis response
-export interface RiskAnalysisResponse {
-  riskAnalysis: {
-    correlationMatrix: unknown[][];
-    portfolioBeta: number;
-    valueAtRisk: {
-      daily: number;
-      tenDay: number;
-      confidenceLevel: number;
-      portfolioValue: number;
-      percentageOfPortfolio: number;
-    };
-    riskBreakdown: {
-      marketRisk: number;
-      sectorRisk: number;
-      specificRisk: number;
-    };
-  };
-}
-
-// Interface for benchmark comparison response
-export interface BenchmarkComparisonResponse {
-  benchmarkComparison: {
-    benchmark: string;
-    period: string;
-    portfolioReturn: number;
-    benchmarkReturn: number;
-    trackingError: number;
-    informationRatio: number;
-    alpha: number;
-    portfolioTimeSeries: {
-      date: string;
-      value: number;
-    }[];
-    benchmarkTimeSeries: {
-      date: string;
-      value: number;
-    }[];
-  };
-}
-
-// Interface for diversification analysis response
-export interface DiversificationResponse {
-  diversificationAnalysis: {
-    sectorAllocation: {
-      sector: string;
-      value: number;
-      percentage: number;
-    }[];
-    assetClassAllocation: {
-      assetClass: string;
-      value: number;
-      percentage: number;
-    }[];
-    concentration: {
-      topHolding: number;
-      top3Holdings: number;
-      top5Holdings: number;
-      hhi: number;
-      numberOfPositions: number;
-    };
-    diversificationScore: number;
-  };
-}
 
 // Function to retrieve portfolio performance data
 export const getPortfolioPerformance = async (

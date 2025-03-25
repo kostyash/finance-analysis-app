@@ -1,8 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './PortfolioPage.css';
 import AddPositionModal from './AddPositionModal';
 import EditPositionModal from './EditPositionModal';
-import { Position, PositionInput } from '../../types';
+import { Position, PositionInput, Portfolio } from '../../types';
+import {
+  getPortfolios,
+  getPositions,
+  addPosition,
+  updatePosition,
+  deletePosition,
+  createPortfolio,
+} from '../../services/portfolioService';
+import { transformPositionsData } from '../../utils/positionUtils';
+import LoadingSpinner from '../common/LoadingSpinner';
+import ErrorMessage from '../common/ErrorMessage';
 
 interface PortfolioSummary {
   totalValue: number;
@@ -12,88 +23,184 @@ interface PortfolioSummary {
 }
 
 const PortfolioPage: React.FC = () => {
-  // Mock data for now - later we'll fetch this from API
+  // State for UI controls
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
   const [showEditModal, setShowEditModal] = useState<boolean>(false);
   const [editingPosition, setEditingPosition] = useState<Position | null>(null);
   const [editingIndex, setEditingIndex] = useState<number>(0);
-  const [positions, setPositions] = useState<Position[]>([
-    {
-      ticker: 'AAPL',
-      shares: 10,
-      purchasePrice: 150.25,
-      purchaseDate: '2023-01-15',
-      currentPrice: 175.75,
-      currentValue: 1757.5,
-      gainLoss: 255.0,
-      gainLossPct: 16.97,
-    },
-    {
-      ticker: 'MSFT',
-      shares: 5,
-      purchasePrice: 305.75,
-      purchaseDate: '2023-01-20',
-      currentPrice: 364.3,
-      currentValue: 1821.5,
-      gainLoss: 292.75,
-      gainLossPct: 19.15,
-    },
-  ]);
 
-  const handleAddPosition = (newPosition: PositionInput) => {
-    // In a real app, you would fetch the current price from an API
-    // For now, we'll use a mock price
-    const mockCurrentPrice = newPosition.purchasePrice * (1 + Math.random() * 0.2 - 0.1);
-    const currentValue = mockCurrentPrice * newPosition.shares;
-    const gainLoss = currentValue - newPosition.purchasePrice * newPosition.shares;
-    const gainLossPct = (gainLoss / (newPosition.purchasePrice * newPosition.shares)) * 100;
+  // State for data
+  const [positions, setPositions] = useState<Position[]>([]);
+  const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
+  const [selectedPortfolio, setSelectedPortfolio] = useState<string>('default');
 
-    const fullPosition: Position = {
-      ...newPosition,
-      currentPrice: mockCurrentPrice,
-      currentValue,
-      gainLoss,
-      gainLossPct,
+  // Loading and error states
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isCreatingNewPortfolio, setIsCreatingNewPortfolio] = useState<boolean>(false);
+  const [newPortfolioName, setNewPortfolioName] = useState<string>('');
+
+  // Fetch portfolios and positions on component mount
+  useEffect(() => {
+    const fetchPortfolios = async () => {
+      try {
+        const portfoliosData = await getPortfolios();
+        setPortfolios(portfoliosData);
+
+        // If portfolios exist, select the first one (or keep the selected one if it exists)
+        if (portfoliosData.length > 0) {
+          const portfolioExists = portfoliosData.some((p) => p.portfolioId === selectedPortfolio);
+          if (!portfolioExists) {
+            setSelectedPortfolio(portfoliosData[0].portfolioId);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching portfolios:', err);
+        setError('Failed to load portfolios. Please try again later.');
+      }
     };
 
-    setPositions([...positions, fullPosition]);
-  };
+    fetchPortfolios();
+  }, []);
 
-  const handleDeletePosition = (indexToDelete: number) => {
-    if (window.confirm('Are you sure you want to delete this position?')) {
-      const updatedPositions = positions.filter((_, index) => index !== indexToDelete);
-      setPositions(updatedPositions);
+  // Fetch positions when selected portfolio changes
+  useEffect(() => {
+    const fetchPositions = async () => {
+      if (!selectedPortfolio) return;
+
+      try {
+        setLoading(true);
+        setError(null);
+
+        const positionsData = await getPositions(selectedPortfolio);
+        const transformedPositions = transformPositionsData(positionsData);
+        setPositions(transformedPositions);
+      } catch (err) {
+        console.error('Error fetching positions:', err);
+        setError('Failed to load positions. Please try again later.');
+        setPositions([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPositions();
+  }, [selectedPortfolio]);
+
+  // Handle adding a new position
+  const handleAddPosition = async (newPositionInput: PositionInput) => {
+    try {
+      setLoading(true);
+
+      // Add the position via API
+      await addPosition(selectedPortfolio, newPositionInput);
+
+      // Refresh the positions list
+      const positionsData = await getPositions(selectedPortfolio);
+      const transformedPositions = transformPositionsData(positionsData);
+      setPositions(transformedPositions);
+
+      setShowAddModal(false);
+    } catch (err) {
+      console.error('Error adding position:', err);
+      setError('Failed to add position. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
+  // Handle deleting a position
+  const handleDeletePosition = async (positionIndex: number) => {
+    if (!window.confirm('Are you sure you want to delete this position?')) {
+      return;
+    }
+
+    const positionToDelete = positions[positionIndex];
+
+    try {
+      setLoading(true);
+
+      // Delete the position via API
+      await deletePosition(selectedPortfolio, positionToDelete.ticker);
+
+      // Refresh the positions list
+      const positionsData = await getPositions(selectedPortfolio);
+      const transformedPositions = transformPositionsData(positionsData);
+      setPositions(transformedPositions);
+    } catch (err) {
+      console.error('Error deleting position:', err);
+      setError('Failed to delete position. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle clicking the edit button for a position
   const handleEditClick = (position: Position, index: number) => {
     setEditingPosition(position);
     setEditingIndex(index);
     setShowEditModal(true);
   };
 
-  const handleUpdatePosition = (index: number, updatedPosition: PositionInput) => {
-    // In a real app, you would fetch the current price from an API
-    // For now, we'll keep the current price the same
-    const currentPrice = positions[index].currentPrice;
-    const currentValue = currentPrice * updatedPosition.shares;
-    const gainLoss = currentValue - updatedPosition.purchasePrice * updatedPosition.shares;
-    const gainLossPct = (gainLoss / (updatedPosition.purchasePrice * updatedPosition.shares)) * 100;
+  // Handle updating a position
+  const handleUpdatePosition = async (index: number, updatedPositionInput: PositionInput) => {
+    try {
+      setLoading(true);
 
-    const fullPosition: Position = {
-      ...updatedPosition,
-      currentPrice,
-      currentValue,
-      gainLoss,
-      gainLossPct,
-    };
+      const positionToUpdate = positions[index];
 
-    const newPositions = [...positions];
-    newPositions[index] = fullPosition;
-    setPositions(newPositions);
+      // Update the position via API
+      await updatePosition(selectedPortfolio, positionToUpdate.ticker, updatedPositionInput);
+
+      // Refresh the positions list
+      const positionsData = await getPositions(selectedPortfolio);
+      const transformedPositions = transformPositionsData(positionsData);
+      setPositions(transformedPositions);
+
+      setShowEditModal(false);
+    } catch (err) {
+      console.error('Error updating position:', err);
+      setError('Failed to update position. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Calculate summary
+  // Handle creating a new portfolio
+  const handleCreatePortfolio = async () => {
+    if (!newPortfolioName.trim()) {
+      setError('Portfolio name cannot be empty');
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // Create the portfolio via API
+      const newPortfolio = await createPortfolio({
+        name: newPortfolioName,
+        description: `Created on ${new Date().toLocaleDateString()}`,
+      });
+
+      // Refresh the portfolios list
+      const portfoliosData = await getPortfolios();
+      setPortfolios(portfoliosData);
+
+      // Select the new portfolio
+      setSelectedPortfolio(newPortfolio.portfolioId);
+
+      // Reset the form
+      setNewPortfolioName('');
+      setIsCreatingNewPortfolio(false);
+    } catch (err) {
+      console.error('Error creating portfolio:', err);
+      setError('Failed to create portfolio. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calculate portfolio summary
   const summary: PortfolioSummary = {
     totalValue: positions.reduce((sum, pos) => sum + pos.currentValue, 0),
     totalCost: positions.reduce((sum, pos) => sum + pos.purchasePrice * pos.shares, 0),
@@ -102,17 +209,56 @@ const PortfolioPage: React.FC = () => {
   };
 
   summary.totalGainLoss = summary.totalValue - summary.totalCost;
-  summary.totalGainLossPct = (summary.totalGainLoss / summary.totalCost) * 100;
+  summary.totalGainLossPct =
+    summary.totalCost > 0 ? (summary.totalGainLoss / summary.totalCost) * 100 : 0;
 
   return (
     <div className="portfolio-page">
-      <div className="simulation-banner">
-        <h3>Simulation Mode</h3>
-        <p>
-          You are using a hypothetical portfolio simulator. All positions and performance data are
-          simulated.
-        </p>
+      {/* Portfolio Selector */}
+      <div className="portfolio-selector">
+        <label htmlFor="portfolio-select">Portfolio: </label>
+        <select
+          id="portfolio-select"
+          value={selectedPortfolio}
+          onChange={(e) => setSelectedPortfolio(e.target.value)}
+          disabled={loading || portfolios.length === 0}
+        >
+          {portfolios.map((portfolio) => (
+            <option key={portfolio.portfolioId} value={portfolio.portfolioId}>
+              {portfolio.name}
+            </option>
+          ))}
+        </select>
+
+        {!isCreatingNewPortfolio ? (
+          <button className="secondary-button" onClick={() => setIsCreatingNewPortfolio(true)}>
+            New Portfolio
+          </button>
+        ) : (
+          <div className="new-portfolio-form">
+            <input
+              type="text"
+              placeholder="Portfolio Name"
+              value={newPortfolioName}
+              onChange={(e) => setNewPortfolioName(e.target.value)}
+            />
+            <button className="primary-button" onClick={handleCreatePortfolio} disabled={loading}>
+              Create
+            </button>
+            <button
+              className="secondary-button"
+              onClick={() => {
+                setIsCreatingNewPortfolio(false);
+                setNewPortfolioName('');
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
       </div>
+
+      {error && <ErrorMessage message={error} onDismiss={() => setError(null)} />}
 
       <div className="summary-card">
         <h2>Portfolio Summary</h2>
@@ -143,60 +289,75 @@ const PortfolioPage: React.FC = () => {
       </div>
 
       <div className="actions">
-        <button className="primary-button" onClick={() => setShowAddModal(true)}>
+        <button className="primary-button" onClick={() => setShowAddModal(true)} disabled={loading}>
           Add Position
         </button>
-        <button className="secondary-button">Import Positions</button>
-        <button className="secondary-button">Load Demo</button>
       </div>
 
       <div className="portfolio-table-card">
         <h2>Holdings</h2>
-        <div className="portfolio-table">
-          <table>
-            <thead>
-              <tr>
-                <th>Symbol</th>
-                <th>Shares</th>
-                <th>Avg Cost</th>
-                <th>Current</th>
-                <th>Value</th>
-                <th>Gain/Loss</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {positions.map((position, index) => (
-                <tr key={index}>
-                  <td>{position.ticker}</td>
-                  <td>{position.shares}</td>
-                  <td>${position.purchasePrice.toFixed(2)}</td>
-                  <td>${position.currentPrice.toFixed(2)}</td>
-                  <td>${position.currentValue.toFixed(2)}</td>
-                  <td className={position.gainLoss >= 0 ? 'positive' : 'negative'}>
-                    {position.gainLossPct.toFixed(2)}%
-                  </td>
-                  <td>
-                    <button
-                      className="edit-button"
-                      onClick={() => handleEditClick(position, index)}
-                    >
-                      Edit
-                    </button>
-                    <button className="delete-button" onClick={() => handleDeletePosition(index)}>
-                      Delete
-                    </button>
-                  </td>
+
+        {loading ? (
+          <LoadingSpinner />
+        ) : positions.length === 0 ? (
+          <div className="empty-state">
+            <p>No positions in this portfolio yet. Add your first position to get started.</p>
+          </div>
+        ) : (
+          <div className="portfolio-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Symbol</th>
+                  <th>Shares</th>
+                  <th>Avg Cost</th>
+                  <th>Current</th>
+                  <th>Value</th>
+                  <th>Gain/Loss</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {positions.map((position, index) => (
+                  <tr key={position.ticker}>
+                    <td>{position.ticker}</td>
+                    <td>{position.shares}</td>
+                    <td>${position.purchasePrice.toFixed(2)}</td>
+                    <td>${position.currentPrice.toFixed(2)}</td>
+                    <td>${position.currentValue.toFixed(2)}</td>
+                    <td className={position.gainLoss >= 0 ? 'positive' : 'negative'}>
+                      {position.gainLossPct.toFixed(2)}%
+                    </td>
+                    <td>
+                      <button
+                        className="edit-button"
+                        onClick={() => handleEditClick(position, index)}
+                        disabled={loading}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="delete-button"
+                        onClick={() => handleDeletePosition(index)}
+                        disabled={loading}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
+
+      {/* Modals */}
       <AddPositionModal
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         onAddPosition={handleAddPosition}
+        isSubmitting={loading}
       />
       <EditPositionModal
         isOpen={showEditModal}
@@ -204,6 +365,7 @@ const PortfolioPage: React.FC = () => {
         positionIndex={editingIndex}
         onClose={() => setShowEditModal(false)}
         onUpdatePosition={handleUpdatePosition}
+        isSubmitting={loading}
       />
     </div>
   );

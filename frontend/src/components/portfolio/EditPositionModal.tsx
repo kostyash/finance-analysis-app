@@ -8,6 +8,7 @@ interface EditPositionModalProps {
   onClose: () => void;
   onUpdatePosition: (index: number, position: PositionInput) => void;
   positionIndex: number;
+  isSubmitting?: boolean; // Added isSubmitting prop
 }
 
 const EditPositionModal: React.FC<EditPositionModalProps> = ({
@@ -16,6 +17,7 @@ const EditPositionModal: React.FC<EditPositionModalProps> = ({
   onClose,
   onUpdatePosition,
   positionIndex,
+  isSubmitting = false, // Default to false if not provided
 }) => {
   const [formData, setFormData] = useState<PositionInput>({
     ticker: '',
@@ -33,13 +35,14 @@ const EditPositionModal: React.FC<EditPositionModalProps> = ({
         shares: position.shares,
         purchasePrice: position.purchasePrice,
         purchaseDate: position.purchaseDate,
+        notes: position.notes,
       });
     }
   }, [position]);
 
   if (!isOpen || !position) return null;
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -79,7 +82,9 @@ const EditPositionModal: React.FC<EditPositionModalProps> = ({
         shares: Number(formData.shares),
         purchasePrice: Number(formData.purchasePrice),
       });
-      onClose();
+      // We no longer close the modal here - it will be closed when the update completes
+      // This gives better UX feedback when there are network delays
+      // onClose();
     }
   };
 
@@ -88,7 +93,7 @@ const EditPositionModal: React.FC<EditPositionModalProps> = ({
       <div className="modal-container">
         <div className="modal-header">
           <h2>Edit Position: {position.ticker}</h2>
-          <button className="close-button" onClick={onClose}>
+          <button className="close-button" onClick={onClose} disabled={isSubmitting}>
             &times;
           </button>
         </div>
@@ -115,6 +120,7 @@ const EditPositionModal: React.FC<EditPositionModalProps> = ({
               onChange={handleChange}
               step="0.01"
               min="0.01"
+              disabled={isSubmitting}
             />
             {errors.shares && <div className="error">{errors.shares}</div>}
           </div>
@@ -128,6 +134,7 @@ const EditPositionModal: React.FC<EditPositionModalProps> = ({
               onChange={handleChange}
               step="0.01"
               min="0.01"
+              disabled={isSubmitting}
             />
             {errors.purchasePrice && <div className="error">{errors.purchasePrice}</div>}
           </div>
@@ -139,16 +146,33 @@ const EditPositionModal: React.FC<EditPositionModalProps> = ({
               name="purchaseDate"
               value={formData.purchaseDate}
               onChange={handleChange}
+              disabled={isSubmitting}
             />
             {errors.purchaseDate && <div className="error">{errors.purchaseDate}</div>}
           </div>
 
+          <div className="form-group">
+            <label>Notes (Optional)</label>
+            <textarea
+              name="notes"
+              value={formData.notes || ''}
+              onChange={handleChange}
+              rows={3}
+              disabled={isSubmitting}
+            />
+          </div>
+
           <div className="modal-actions">
-            <button type="button" className="secondary-button" onClick={onClose}>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={onClose}
+              disabled={isSubmitting}
+            >
               Cancel
             </button>
-            <button type="submit" className="primary-button">
-              Update Position
+            <button type="submit" className="primary-button" disabled={isSubmitting}>
+              {isSubmitting ? 'Updating...' : 'Update Position'}
             </button>
           </div>
         </form>

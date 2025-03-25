@@ -1,5 +1,5 @@
-// src/components/common/LoadingSpinner.tsx
 import React from 'react';
+import './CommonStyles.css';
 
 interface LoadingSpinnerProps {
   message?: string;
@@ -7,9 +7,9 @@ interface LoadingSpinnerProps {
 
 const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ message = 'Loading...' }) => {
   return (
-    <div className="loading-spinner">
-      <div className="spinner-icon"></div>
-      <div className="spinner-message">{message}</div>
+    <div className="loading-spinner-container">
+      <div className="loading-spinner"></div>
+      <div className="loading-message">{message}</div>
     </div>
   );
 };

@@ -6,22 +6,24 @@ import * as cognito from "aws-cdk-lib/aws-cognito";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as s3 from "aws-cdk-lib/aws-s3";
+import * as iam from "aws-cdk-lib/aws-iam";
 import { Construct } from "constructs";
-import path = require("path");
 
 export class CdkInfraStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // Persistence - DynamoDB Tables
+    // Create DynamoDB tables
     const portfolioTable = new dynamodb.Table(this, "PortfolioTable", {
+      tableName: "Portfolios",
       partitionKey: { name: "userId", type: dynamodb.AttributeType.STRING },
       sortKey: { name: "portfolioId", type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: cdk.RemovalPolicy.RETAIN, // Use DESTROY for dev, RETAIN for prod
     });
 
     const positionTable = new dynamodb.Table(this, "PositionTable", {
+      tableName: "Positions",
       partitionKey: {
         name: "portfolioId",
         type: dynamodb.AttributeType.STRING,
@@ -29,6 +31,13 @@ export class CdkInfraStack extends cdk.Stack {
       sortKey: { name: "ticker", type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
+    // Add GSI for positions by user
+    positionTable.addGlobalSecondaryIndex({
+      indexName: "UserIdIndex",
+      partitionKey: { name: "userId", type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
     });
 
     // Now define the portfolio Lambda function
@@ -42,11 +51,28 @@ export class CdkInfraStack extends cdk.Stack {
       },
     });
 
-    // Add secondary index for querying positions by user
-    positionTable.addGlobalSecondaryIndex({
-      indexName: "userId-index",
-      partitionKey: { name: "userId", type: dynamodb.AttributeType.STRING },
+    // Grant permissions to Lambda functions
+    portfolioTable.grantReadWriteData(portfolioFunction);
+    positionTable.grantReadWriteData(portfolioFunction);
+
+    const policyStatement = new iam.PolicyStatement({
+      actions: [
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+      ],
+      resources: [
+        portfolioTable.tableArn,
+        `${portfolioTable.tableArn}/index/*`,
+        positionTable.tableArn,
+        `${positionTable.tableArn}/index/*`,
+      ],
     });
+
+    portfolioFunction.addToRolePolicy(policyStatement);
 
     // Authentication - Cognito User Pool
     const userPool = new cognito.UserPool(this, "FinanceAppUserPool", {
@@ -151,16 +177,6 @@ export class CdkInfraStack extends cdk.Stack {
         allowCredentials: true,
       },
     });
-    // Apply authorizer to protected routes
-    const protectedResource = api.root.addResource("portfolio");
-    protectedResource.addMethod(
-      "GET",
-      new apigateway.LambdaIntegration(portfolioFunction),
-      {
-        authorizer: authorizer,
-        authorizationType: apigateway.AuthorizationType.COGNITO,
-      }
-    );
 
     // Stock data endpoint
     const stocks = api.root.addResource("stocks");
@@ -214,6 +230,119 @@ export class CdkInfraStack extends cdk.Stack {
     // Grant the Lambda function read access to the DynamoDB tables
     portfolioTable.grantReadData(analyticsFunction);
     positionTable.grantReadData(analyticsFunction);
+
+    // Portfolio routes
+    const portfolioResource = api.root.addResource("portfolio");
+
+    // GET /portfolio - Get all portfolios
+    portfolioResource.addMethod(
+      "GET",
+      new apigateway.LambdaIntegration(portfolioFunction),
+      {
+        authorizer: authorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      }
+    );
+
+    // POST /portfolio - Create a new portfolio
+    portfolioResource.addMethod(
+      "POST",
+      new apigateway.LambdaIntegration(portfolioFunction),
+      {
+        authorizer: authorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      }
+    );
+
+    // Individual portfolio operations
+    const singlePortfolioResource =
+      portfolioResource.addResource("{portfolioId}");
+
+    // GET /portfolio/{portfolioId} - Get a specific portfolio
+    singlePortfolioResource.addMethod(
+      "GET",
+      new apigateway.LambdaIntegration(portfolioFunction),
+      {
+        authorizer: authorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      }
+    );
+
+    // PUT /portfolio/{portfolioId} - Update a portfolio
+    singlePortfolioResource.addMethod(
+      "PUT",
+      new apigateway.LambdaIntegration(portfolioFunction),
+      {
+        authorizer: authorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      }
+    );
+
+    // DELETE /portfolio/{portfolioId} - Delete a portfolio
+    singlePortfolioResource.addMethod(
+      "DELETE",
+      new apigateway.LambdaIntegration(portfolioFunction),
+      {
+        authorizer: authorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      }
+    );
+
+    // Position routes
+    const positionsResource = singlePortfolioResource.addResource("positions");
+
+    // GET /portfolio/{portfolioId}/positions - Get all positions for a portfolio
+    positionsResource.addMethod(
+      "GET",
+      new apigateway.LambdaIntegration(portfolioFunction),
+      {
+        authorizer: authorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      }
+    );
+
+    // POST /portfolio/{portfolioId}/positions - Add a position to a portfolio
+    positionsResource.addMethod(
+      "POST",
+      new apigateway.LambdaIntegration(portfolioFunction),
+      {
+        authorizer: authorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      }
+    );
+
+    // Individual position operations
+    const singlePositionResource = positionsResource.addResource("{ticker}");
+
+    // GET /portfolio/{portfolioId}/positions/{ticker} - Get a specific position
+    singlePositionResource.addMethod(
+      "GET",
+      new apigateway.LambdaIntegration(portfolioFunction),
+      {
+        authorizer: authorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      }
+    );
+
+    // PUT /portfolio/{portfolioId}/positions/{ticker} - Update a position
+    singlePositionResource.addMethod(
+      "PUT",
+      new apigateway.LambdaIntegration(portfolioFunction),
+      {
+        authorizer: authorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      }
+    );
+
+    // DELETE /portfolio/{portfolioId}/positions/{ticker} - Delete a position
+    singlePositionResource.addMethod(
+      "DELETE",
+      new apigateway.LambdaIntegration(portfolioFunction),
+      {
+        authorizer: authorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      }
+    );
 
     // Add an API Gateway endpoint for the analytics function
     const analyticsResource = api.root.addResource("analysis");

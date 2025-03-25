@@ -7,14 +7,20 @@ interface AddPositionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddPosition: (position: PositionInput) => void;
+  isSubmitting?: boolean; // Added isSubmitting prop
 }
 
-const AddPositionModal: React.FC<AddPositionModalProps> = ({ isOpen, onClose, onAddPosition }) => {
+const AddPositionModal: React.FC<AddPositionModalProps> = ({
+  isOpen,
+  onClose,
+  onAddPosition,
+  isSubmitting = false,
+}) => {
   const [formData, setFormData] = useState<PositionInput>({
     ticker: '',
     shares: 0,
     purchasePrice: 0,
-    purchaseDate: new Date().toISOString().split('T')[0],
+    purchaseDate: new Date().toISOString().split('T')[0], // Default to today
   });
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -51,12 +57,18 @@ const AddPositionModal: React.FC<AddPositionModalProps> = ({ isOpen, onClose, on
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
       [name]: name === 'ticker' ? value.toUpperCase() : value,
     }));
+
+    // Reset stock data loaded status when ticker changes
+    if (name === 'ticker') {
+      setStockDataLoaded(false);
+      setStockLookupError('');
+    }
   };
 
   const validateForm = (): boolean => {
@@ -91,7 +103,19 @@ const AddPositionModal: React.FC<AddPositionModalProps> = ({ isOpen, onClose, on
         shares: Number(formData.shares),
         purchasePrice: Number(formData.purchasePrice),
       });
-      onClose();
+
+      // Reset form data for next time
+      setFormData({
+        ticker: '',
+        shares: 0,
+        purchasePrice: 0,
+        purchaseDate: new Date().toISOString().split('T')[0],
+      });
+
+      setStockDataLoaded(false);
+
+      // Note: We don't close the modal here since the parent will handle it
+      // after the API call completes
     }
   };
 
@@ -100,7 +124,7 @@ const AddPositionModal: React.FC<AddPositionModalProps> = ({ isOpen, onClose, on
       <div className="modal-container">
         <div className="modal-header">
           <h2>Add New Position</h2>
-          <button className="close-button" onClick={onClose}>
+          <button className="close-button" onClick={onClose} disabled={isSubmitting || isLookingUp}>
             &times;
           </button>
         </div>
@@ -110,24 +134,25 @@ const AddPositionModal: React.FC<AddPositionModalProps> = ({ isOpen, onClose, on
             <label>Stock Symbol</label>
             <div className="input-with-button">
               <input
-                className="input "
+                className="input"
                 type="text"
                 name="ticker"
                 value={formData.ticker}
                 onChange={handleChange}
                 placeholder="e.g., AAPL"
+                disabled={isSubmitting}
               />
               <button
                 type="button"
                 className="secondary-button"
                 onClick={lookupStockData}
-                disabled={isLookingUp || !formData.ticker}
+                disabled={isLookingUp || !formData.ticker || isSubmitting}
               >
                 {isLookingUp ? 'Loading...' : 'Lookup'}
               </button>
             </div>
             {stockLookupError && <div className="error">{stockLookupError}</div>}
-            {stockDataLoaded && <div className="success ">Current price loaded</div>}
+            {stockDataLoaded && <div className="success">Current price loaded</div>}
             {errors.ticker && <div className="error">{errors.ticker}</div>}
           </div>
 
@@ -136,10 +161,12 @@ const AddPositionModal: React.FC<AddPositionModalProps> = ({ isOpen, onClose, on
             <input
               type="number"
               name="shares"
-              value={formData.shares}
+              value={formData.shares || ''}
               onChange={handleChange}
               step="0.01"
               min="0.01"
+              placeholder="e.g., 10"
+              disabled={isSubmitting}
             />
             {errors.shares && <div className="error">{errors.shares}</div>}
           </div>
@@ -149,10 +176,12 @@ const AddPositionModal: React.FC<AddPositionModalProps> = ({ isOpen, onClose, on
             <input
               type="number"
               name="purchasePrice"
-              value={formData.purchasePrice}
+              value={formData.purchasePrice || ''}
               onChange={handleChange}
               step="0.01"
               min="0.01"
+              placeholder="e.g., 150.25"
+              disabled={isSubmitting}
             />
             {errors.purchasePrice && <div className="error">{errors.purchasePrice}</div>}
           </div>
@@ -164,16 +193,34 @@ const AddPositionModal: React.FC<AddPositionModalProps> = ({ isOpen, onClose, on
               name="purchaseDate"
               value={formData.purchaseDate}
               onChange={handleChange}
+              disabled={isSubmitting}
             />
             {errors.purchaseDate && <div className="error">{errors.purchaseDate}</div>}
           </div>
 
+          <div className="form-group">
+            <label>Notes (Optional)</label>
+            <textarea
+              name="notes"
+              value={formData.notes || ''}
+              onChange={handleChange}
+              rows={3}
+              placeholder="Add any notes about this position"
+              disabled={isSubmitting}
+            />
+          </div>
+
           <div className="modal-actions">
-            <button type="button" className="secondary-button" onClick={onClose}>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={onClose}
+              disabled={isSubmitting || isLookingUp}
+            >
               Cancel
             </button>
-            <button type="submit" className="primary-button">
-              Add Position
+            <button type="submit" className="primary-button" disabled={isSubmitting || isLookingUp}>
+              {isSubmitting ? 'Adding...' : 'Add Position'}
             </button>
           </div>
         </form>
