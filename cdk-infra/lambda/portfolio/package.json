@@ -15,6 +15,7 @@
     "typescript": "^5.8.2"
   },
   "dependencies": {
-    "aws-sdk": "^2.1692.0"
+    "aws-sdk": "^2.1692.0",
+    "xlsx": "^0.18.5"
   }
 }

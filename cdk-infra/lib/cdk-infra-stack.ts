@@ -288,6 +288,16 @@ export class CdkInfraStack extends cdk.Stack {
       }
     );
 
+    const importResource = singlePortfolioResource.addResource("import");
+    importResource.addMethod(
+      "POST",
+      new apigateway.LambdaIntegration(portfolioFunction),
+      {
+        authorizer: authorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      }
+    );
+
     // Position routes
     const positionsResource = singlePortfolioResource.addResource("positions");
 

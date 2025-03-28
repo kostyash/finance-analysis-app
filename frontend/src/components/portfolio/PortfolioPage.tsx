@@ -14,6 +14,7 @@ import {
 import { transformPositionsData } from '../../utils/positionUtils';
 import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorMessage from '../common/ErrorMessage';
+import PortfolioImport from './PortfolioImport';
 
 interface PortfolioSummary {
   totalValue: number;
@@ -292,6 +293,27 @@ const PortfolioPage: React.FC = () => {
         <button className="primary-button" onClick={() => setShowAddModal(true)} disabled={loading}>
           Add Position
         </button>
+        <PortfolioImport
+          portfolioId={selectedPortfolio}
+          onImportComplete={() => {
+            // Refresh positions after import
+            const fetchPositions = async () => {
+              try {
+                setLoading(true);
+                const positionsData = await getPositions(selectedPortfolio);
+                const transformedPositions = transformPositionsData(positionsData);
+                setPositions(transformedPositions);
+              } catch (err) {
+                console.error('Error fetching positions:', err);
+                setError('Failed to load positions. Please try again later.');
+              } finally {
+                setLoading(false);
+              }
+            };
+
+            fetchPositions();
+          }}
+        />
       </div>
 
       <div className="portfolio-table-card">

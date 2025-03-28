@@ -113,6 +113,26 @@ export const deletePortfolio = async (portfolioId: string): Promise<{ message: s
   }
 };
 
+export const uploadPortfolioFile = async (portfolioId: string, file: File): Promise<void> => {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${config.apiGateway.URL}/portfolio/${portfolioId}/import`, {
+    method: 'POST',
+    headers: {
+      ...getAuthHeader(),
+      // Note: Don't set Content-Type here, it will be set automatically with boundary
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to import portfolio data');
+  }
+
+  return;
+};
+
 // Get positions for a portfolio
 export const getPositions = async (portfolioId = 'default') => {
   try {

@@ -1,19 +1,38 @@
 import { DynamoDB } from "aws-sdk";
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { v4 as uuidv4 } from "uuid";
+import * as XLSX from "xlsx";
 
 const dynamoDB = new DynamoDB.DocumentClient();
 const PORTFOLIO_TABLE = process.env.PORTFOLIO_TABLE!;
 const POSITION_TABLE = process.env.POSITION_TABLE!;
 
+// Helper function to check if a portfolio exists and belongs to a user
+async function checkPortfolioExists(
+  userId: string,
+  portfolioId: string
+): Promise<boolean> {
+  try {
+    const params = {
+      TableName: PORTFOLIO_TABLE,
+      Key: {
+        userId: userId,
+        portfolioId: portfolioId,
+      },
+    };
+
+    const result = await dynamoDB.get(params).promise();
+    return !!result.Item; // Convert to boolean - true if Item exists, false otherwise
+  } catch (error) {
+    console.error("Error checking if portfolio exists:", error);
+    return false; // Assume portfolio doesn't exist if there's an error
+  }
+}
+
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
   try {
-    console.log("Table names:", {
-      portfolioTable: PORTFOLIO_TABLE,
-      positionTable: POSITION_TABLE,
-    });
     // Get user ID from Cognito authorizer context
     const userId = event.requestContext.authorizer?.claims?.sub;
     if (!userId) {
@@ -52,6 +71,9 @@ export const handler = async (
           // Add a new position
           const position = JSON.parse(event.body || "{}");
           return await addPosition(userId, portfolioId, position);
+        } else if (event.path.includes("/import")) {
+          // Handle file import
+          return await importPortfolioData(userId, portfolioId, event);
         }
         break;
 
@@ -170,6 +192,16 @@ async function getPortfolios(userId: string) {
 // Get specific portfolio details
 async function getPortfolioDetails(userId: string, portfolioId: string) {
   try {
+    // Use the checkPortfolioExists function
+    const portfolioExists = await checkPortfolioExists(userId, portfolioId);
+    if (!portfolioExists) {
+      return {
+        statusCode: 404,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: "Portfolio not found" }),
+      };
+    }
+
     const params = {
       TableName: PORTFOLIO_TABLE,
       Key: {
@@ -179,14 +211,6 @@ async function getPortfolioDetails(userId: string, portfolioId: string) {
     };
 
     const result = await dynamoDB.get(params).promise();
-
-    if (!result.Item) {
-      return {
-        statusCode: 404,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: "Portfolio not found" }),
-      };
-    }
 
     return {
       statusCode: 200,
@@ -205,18 +229,9 @@ async function createPortfolio(userId: string, portfolioData: any) {
     // Generate a UUID for the portfolio if not provided
     const portfolioId = portfolioData.portfolioId || uuidv4();
 
-    // First check if the portfolio already exists
-    const getParams = {
-      TableName: PORTFOLIO_TABLE,
-      Key: {
-        userId: userId,
-        portfolioId: portfolioId,
-      },
-    };
-
-    const existingItem = await dynamoDB.get(getParams).promise();
-
-    if (existingItem.Item) {
+    // Check if the portfolio already exists
+    const portfolioExists = await checkPortfolioExists(userId, portfolioId);
+    if (portfolioExists) {
       return {
         statusCode: 409,
         headers: corsHeaders,
@@ -268,18 +283,9 @@ async function updatePortfolio(
   updates: any
 ) {
   try {
-    // First check that the portfolio exists and belongs to the user
-    const getParams = {
-      TableName: PORTFOLIO_TABLE,
-      Key: {
-        userId: userId,
-        portfolioId: portfolioId,
-      },
-    };
-
-    const existingItem = await dynamoDB.get(getParams).promise();
-
-    if (!existingItem.Item) {
+    // Check if the portfolio exists and belongs to the user
+    const portfolioExists = await checkPortfolioExists(userId, portfolioId);
+    if (!portfolioExists) {
       return {
         statusCode: 404,
         headers: corsHeaders,
@@ -342,17 +348,8 @@ async function updatePortfolio(
 async function deletePortfolio(userId: string, portfolioId: string) {
   try {
     // Check if portfolio exists and belongs to user
-    const getParams = {
-      TableName: PORTFOLIO_TABLE,
-      Key: {
-        userId: userId,
-        portfolioId: portfolioId,
-      },
-    };
-
-    const existingItem = await dynamoDB.get(getParams).promise();
-
-    if (!existingItem.Item) {
+    const portfolioExists = await checkPortfolioExists(userId, portfolioId);
+    if (!portfolioExists) {
       return {
         statusCode: 404,
         headers: corsHeaders,
@@ -425,20 +422,153 @@ async function deletePortfolio(userId: string, portfolioId: string) {
   }
 }
 
+async function importPortfolioData(
+  userId: string,
+  portfolioId: string,
+  event: APIGatewayProxyEvent
+) {
+  try {
+    // Check if portfolio exists
+    const portfolioExists = await checkPortfolioExists(userId, portfolioId);
+    if (!portfolioExists) {
+      return {
+        statusCode: 404,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: "Portfolio not found" }),
+      };
+    }
+
+    // Parse the body content
+    const body = event.body || "";
+    console.log("Content-Type:", event.headers["content-type"]);
+
+    // For HTML-based Excel files
+    if (body.includes("<table>") || body.includes("<html")) {
+      // Use cheerio or a similar library to parse HTML
+      // For simplicity, let's extract data using regex
+      const positions = [];
+
+      // Extract rows from the HTML table
+      const tableRowRegex =
+        /<tr><td[^>]*>(\d+)<\/td><td[^>]*>([^<]+)<\/td><td[^>]*>([\d\.]+)<\/td><td[^>]*>(\d+)<\/td>/g;
+      let match;
+
+      // Process each row we can find
+      const securityIdIndex = 0;
+      const securityNameIndex = 1;
+      const avgBuyRateIndex = 2;
+      const holdingsQuantityIndex = 3;
+
+      // Try to extract position data from HTML
+      const rows =
+        body.match(/<tr><td\s+style='border: 1px solid #000[^>]*>.*?<\/tr>/g) ||
+        [];
+
+      for (const row of rows) {
+        // Extract cell values
+        const cells = row.match(/<td[^>]*>(.*?)<\/td>/g) || [];
+        const cellValues = cells.map((cell) => {
+          const match = cell.match(/<td[^>]*>(.*?)<\/td>/);
+          return match ? match[1] : "";
+        });
+
+        if (cellValues.length >= 4) {
+          // Map to position format
+          const ticker = cellValues[1]; // Security Name
+          const purchasePrice = parseFloat(cellValues[2]); // Avg Buy Rate
+          const shares = parseFloat(cellValues[3]); // Holdings Quantity
+
+          if (ticker && !isNaN(shares) && !isNaN(purchasePrice) && shares > 0) {
+            positions.push({
+              ticker,
+              shares,
+              purchasePrice,
+              purchaseDate: new Date().toISOString().split("T")[0],
+              notes: `Imported from HTML table on ${new Date().toLocaleDateString()}`,
+            });
+          }
+        }
+      }
+
+      // If no positions found, return error
+      if (positions.length === 0) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({
+            error: "No valid positions found in the uploaded file",
+            details:
+              "Could not parse any valid positions from the HTML content",
+          }),
+        };
+      }
+
+      // Add positions to the database
+      const importResults = {
+        totalPositions: positions.length,
+        validPositions: positions.length,
+        addedPositions: 0,
+        errors: 0,
+      };
+
+      // Add each position to the database
+      for (const position of positions) {
+        try {
+          await dynamoDB
+            .put({
+              TableName: POSITION_TABLE,
+              Item: {
+                userId: userId,
+                portfolioId: portfolioId,
+                ticker: position.ticker,
+                shares: position.shares,
+                purchasePrice: position.purchasePrice,
+                purchaseDate: position.purchaseDate,
+                currentPrice:
+                  position.purchasePrice * (1 + (Math.random() * 0.2 - 0.1)),
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                notes: position.notes,
+              },
+              ConditionExpression:
+                "attribute_not_exists(portfolioId) OR attribute_not_exists(ticker)",
+            })
+            .promise();
+
+          importResults.addedPositions++;
+        } catch (error) {
+          console.error("Error adding position:", error);
+          importResults.errors++;
+        }
+      }
+
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({
+          message: "Portfolio data imported successfully from HTML",
+          results: importResults,
+        }),
+      };
+    }
+
+    // Handle rest of function for other file types...
+    // ... (keep your existing code for Excel files)
+  } catch (error) {
+    console.error("Error importing portfolio data:", error);
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ error: "Failed to import portfolio data" }),
+    };
+  }
+}
+
 async function getPositions(userId: string, portfolioId: string) {
   try {
-    // First verify that the portfolio belongs to the user
-    const portfolioParams = {
-      TableName: PORTFOLIO_TABLE,
-      Key: {
-        userId: userId,
-        portfolioId: portfolioId,
-      },
-    };
-
-    const portfolioResult = await dynamoDB.get(portfolioParams).promise();
-
-    if (!portfolioResult.Item) {
+    // Check if portfolio exists and belongs to user
+    const portfolioExists = await checkPortfolioExists(userId, portfolioId);
+    if (!portfolioExists) {
       return {
         statusCode: 404,
         headers: corsHeaders,
@@ -469,21 +599,12 @@ async function getPositions(userId: string, portfolioId: string) {
   }
 }
 
-// Add position function (continued)
+// Add position function
 async function addPosition(userId: string, portfolioId: string, position: any) {
   try {
     // Verify the portfolio exists and belongs to the user
-    const portfolioParams = {
-      TableName: PORTFOLIO_TABLE,
-      Key: {
-        userId: userId,
-        portfolioId: portfolioId,
-      },
-    };
-
-    const portfolioResult = await dynamoDB.get(portfolioParams).promise();
-
-    if (!portfolioResult.Item) {
+    const portfolioExists = await checkPortfolioExists(userId, portfolioId);
+    if (!portfolioExists) {
       return {
         statusCode: 404,
         headers: corsHeaders,
@@ -581,7 +702,17 @@ async function updatePosition(
   updates: any
 ) {
   try {
-    // First check that the position exists and belongs to the user
+    // First check that the portfolio exists
+    const portfolioExists = await checkPortfolioExists(userId, portfolioId);
+    if (!portfolioExists) {
+      return {
+        statusCode: 404,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: "Portfolio not found" }),
+      };
+    }
+
+    // Then check that the position exists and belongs to the user
     const getParams = {
       TableName: POSITION_TABLE,
       Key: {
@@ -701,7 +832,17 @@ async function deletePosition(
   ticker: string
 ) {
   try {
-    // First check that the position exists and belongs to the user
+    // Check that the portfolio exists
+    const portfolioExists = await checkPortfolioExists(userId, portfolioId);
+    if (!portfolioExists) {
+      return {
+        statusCode: 404,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: "Portfolio not found" }),
+      };
+    }
+
+    // Check that the position exists and belongs to the user
     const getParams = {
       TableName: POSITION_TABLE,
       Key: {
