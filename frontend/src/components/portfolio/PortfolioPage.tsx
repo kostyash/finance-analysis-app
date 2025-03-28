@@ -62,7 +62,7 @@ const PortfolioPage: React.FC = () => {
     };
 
     fetchPortfolios();
-  }, []);
+  }, [selectedPortfolio]);
 
   // Fetch positions when selected portfolio changes
   useEffect(() => {
