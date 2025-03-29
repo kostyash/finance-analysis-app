@@ -547,39 +547,136 @@ async function handleHtmlImport(
 ) {
   const positions: ImportPosition[] = [];
 
-  // Extract rows from the HTML table
-  const rows =
-    body.match(/<tr><td\s+style='border: 1px solid #000[^>]*>.*?<\/tr>/g) || [];
+  console.log("Parsing HTML table from Excel export");
 
-  for (const row of rows) {
-    // Extract cell values
-    const cells = row.match(/<td[^>]*>(.*?)<\/td>/g) || [];
-    const cellValues = cells.map((cell) => {
-      const match = cell.match(/<td[^>]*>(.*?)<\/td>/);
-      return match ? match[1] : "";
-    });
-    console.log("Cell:", cells);
-    console.log("Cell values:", cellValues);
-    if (cellValues.length >= 4) {
-      // Map to position format
-      const companyName = cellValues[1]; // Security Name or ticker
-      const purchasePrice = parseFloat(cellValues[2]); // Avg Buy Rate
-      const shares = parseFloat(cellValues[3]); // Holdings Quantity
-      const currentPrice = parseFloat(cellValues[4]); // Holdings Quantity
+  // Find the main table in the HTML
+  const tableMatch = body.match(/<table>[\s\S]*?<\/table>/i);
+  if (!tableMatch) {
+    console.log("No table found in HTML content");
+    return {
+      statusCode: 400,
+      headers: corsHeaders,
+      body: JSON.stringify({
+        error: "No valid table found in the uploaded file",
+      }),
+    };
+  }
 
-      if (!isNaN(shares) && !isNaN(purchasePrice) && shares > 0) {
+  // Find all rows with style='border: 1px solid #000; font-size: 12px'
+  // These are the actual data rows in your specific HTML format
+  const dataRowsRegex =
+    /<tr><td\s+style='border: 1px solid #000; font-size: 12px;.*?>.*?<\/tr>/g;
+  const dataRows = body.match(dataRowsRegex) || [];
+
+  console.log(`Found ${dataRows.length} data rows in the table`);
+
+  // Find the header row to map column indices
+  const headerRowRegex =
+    /<tr>(<td\s+style='border: 1px solid #000; background-color: #000155;.*?>.*?<\/td>)+<\/tr>/;
+  const headerRowMatch = body.match(headerRowRegex);
+
+  if (!headerRowMatch) {
+    console.log("Header row not found");
+    return {
+      statusCode: 400,
+      headers: corsHeaders,
+      body: JSON.stringify({
+        error: "Could not find table headers in the file",
+      }),
+    };
+  }
+
+  // Extract header cells
+  const headerCellRegex =
+    /<td\s+style='border: 1px solid #000; background-color: #000155;.*?'>(.*?)<\/td>/g;
+  const headerCells: string[] = [];
+  let match;
+
+  while ((match = headerCellRegex.exec(headerRowMatch[0])) !== null) {
+    headerCells.push(match[1].trim());
+  }
+
+  console.log("Header cells:", headerCells);
+
+  // Map column indices
+  const columnIndices: Record<string, number> = {};
+  headerCells.forEach((cell, index) => {
+    const cellLower = cell.toLowerCase();
+
+    if (cellLower.includes("security id")) {
+      columnIndices.securityId = index;
+    }
+    if (cellLower.includes("security name")) {
+      columnIndices.securityName = index;
+    }
+    if (cellLower.includes("avg buy rate")) {
+      columnIndices.purchasePrice = index;
+    }
+    if (cellLower.includes("holdings quantity")) {
+      columnIndices.shares = index;
+    }
+    if (cellLower.includes("last rate")) {
+      columnIndices.currentPrice = index;
+    }
+  });
+
+  console.log("Column indices:", columnIndices);
+
+  // Process each data row
+  for (const row of dataRows) {
+    // Extract all cells from the row
+    const cellRegex =
+      /<td\s+style='border: 1px solid #000; font-size: 12px;.*?'>(.*?)<\/td>/g;
+    const cells: string[] = [];
+
+    while ((match = cellRegex.exec(row)) !== null) {
+      cells.push(match[1].trim());
+    }
+
+    if (cells.length > 0) {
+      // Extract data based on the column mapping
+      const securityId =
+        columnIndices.securityId !== undefined
+          ? cells[columnIndices.securityId]
+          : "";
+      const securityName =
+        columnIndices.securityName !== undefined
+          ? cells[columnIndices.securityName]
+          : "";
+
+      // Handle number values - remove commas and other formatting
+      const purchasePriceStr =
+        columnIndices.purchasePrice !== undefined
+          ? cells[columnIndices.purchasePrice].replace(/,/g, "")
+          : "0";
+      const sharesStr =
+        columnIndices.shares !== undefined
+          ? cells[columnIndices.shares].replace(/,/g, "")
+          : "0";
+      const currentPriceStr =
+        columnIndices.currentPrice !== undefined
+          ? cells[columnIndices.currentPrice].replace(/,/g, "")
+          : "0";
+
+      const purchasePrice = parseFloat(purchasePriceStr);
+      const shares = parseFloat(sharesStr);
+      const currentPrice = parseFloat(currentPriceStr);
+
+      if (securityName && !isNaN(shares) && shares > 0) {
         positions.push({
-          ticker: "", // Ticker
-          companyName,
-          currentPrice,
+          ticker: "", // We'll use lookup to get this
+          companyName: securityName,
           shares,
-          purchasePrice,
+          purchasePrice: !isNaN(purchasePrice) ? purchasePrice : 0,
+          currentPrice: !isNaN(currentPrice) ? currentPrice : purchasePrice,
           purchaseDate: new Date().toISOString().split("T")[0],
-          notes: `Imported from HTML table on ${new Date().toLocaleDateString()}`,
+          notes: `Imported from Excel on ${new Date().toLocaleDateString()} (Security ID: ${securityId})`,
         });
       }
     }
   }
+
+  console.log(`Extracted ${positions.length} positions`);
 
   // Validate and enrich positions with Yahoo Finance data
   const enrichedPositions = await enrichPositionsWithYahooFinance(positions);
@@ -587,7 +684,6 @@ async function handleHtmlImport(
   // Add to database
   return saveImportedPositions(userId, portfolioId, enrichedPositions);
 }
-
 // Handle Excel file imports
 async function handleExcelImport(
   userId: string,
