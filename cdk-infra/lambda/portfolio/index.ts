@@ -545,7 +545,7 @@ async function handleHtmlImport(
   portfolioId: string,
   body: string
 ) {
-  const positions = [];
+  const positions: ImportPosition[] = [];
 
   // Extract rows from the HTML table
   const rows =
@@ -558,16 +558,20 @@ async function handleHtmlImport(
       const match = cell.match(/<td[^>]*>(.*?)<\/td>/);
       return match ? match[1] : "";
     });
-
+    console.log("Cell:", cells);
+    console.log("Cell values:", cellValues);
     if (cellValues.length >= 4) {
       // Map to position format
-      const ticker = cellValues[1]; // Security Name or ticker
+      const companyName = cellValues[1]; // Security Name or ticker
       const purchasePrice = parseFloat(cellValues[2]); // Avg Buy Rate
       const shares = parseFloat(cellValues[3]); // Holdings Quantity
+      const currentPrice = parseFloat(cellValues[4]); // Holdings Quantity
 
-      if (ticker && !isNaN(shares) && !isNaN(purchasePrice) && shares > 0) {
+      if (!isNaN(shares) && !isNaN(purchasePrice) && shares > 0) {
         positions.push({
-          ticker,
+          ticker: "", // Ticker
+          companyName,
+          currentPrice,
           shares,
           purchasePrice,
           purchaseDate: new Date().toISOString().split("T")[0],
@@ -795,20 +799,23 @@ async function handleCsvImport(
 
   // Extract header row
   const header = lines[0].split(",");
-
+  console.log("Header:", header);
   // Map header indices
-  const tickerIndex = header.findIndex((col) =>
-    /symbol|ticker|security|stock/i.test(col)
-  );
+  const tickerIndex = header.findIndex((col) => /symbol/i.test(col));
   const companyIndex = header.findIndex((col) =>
-    /company|name|description/i.test(col)
+    /company|name|description|security/i.test(col)
   );
   const sharesIndex = header.findIndex((col) =>
     /shares|quantity|amount|units/i.test(col)
   );
-  const priceIndex = header.findIndex((col) => /price|cost|rate/i.test(col));
-  const dateIndex = header.findIndex((col) => /date|purchased/i.test(col));
+  const priceIndex = header.findIndex((col) => /price|cost|avg/i.test(col));
 
+  const currentPriceIndex = header.findIndex((col) =>
+    /price|cost|last/i.test(col)
+  );
+
+  const dateIndex = header.findIndex((col) => /date|purchased/i.test(col));
+  console.log("indexes:", tickerIndex, companyIndex, sharesIndex, priceIndex);
   // Process data rows
   for (let i = 1; i < lines.length; i++) {
     if (!lines[i].trim()) continue;
@@ -819,6 +826,8 @@ async function handleCsvImport(
     const companyName = companyIndex >= 0 ? values[companyIndex].trim() : "";
     const shares = sharesIndex >= 0 ? parseFloat(values[sharesIndex]) : 0;
     const purchasePrice = priceIndex >= 0 ? parseFloat(values[priceIndex]) : 0;
+    const currentPrice =
+      currentPriceIndex >= 0 ? parseFloat(values[currentPriceIndex]) : 0;
     const purchaseDate =
       dateIndex >= 0
         ? values[dateIndex].trim()
@@ -831,6 +840,7 @@ async function handleCsvImport(
         companyName,
         shares,
         purchasePrice: !isNaN(purchasePrice) ? purchasePrice : 0,
+        currentPrice: !isNaN(currentPrice) ? currentPrice : 0,
         purchaseDate,
         notes: `Imported from CSV on ${new Date().toLocaleDateString()}`,
       });
@@ -859,11 +869,10 @@ async function enrichPositionsWithYahooFinance(
 
   for (const position of positions) {
     try {
+      console.log("Processing position:", position);
       let ticker = position.ticker;
-      let currentPrice = 0;
-      let lookupMethod = "direct";
-
-      // If ticker is missing but company name is present, look up by company name
+      console.log("Processing ticker:", ticker, position.companyName);
+      // Only do company name to ticker lookup if needed
       if (!ticker && position.companyName) {
         const tickerInfo = await lookupTickerByCompanyName(
           position.companyName
@@ -871,59 +880,29 @@ async function enrichPositionsWithYahooFinance(
         if (tickerInfo && tickerInfo.symbol) {
           ticker = tickerInfo.symbol;
           position.ticker = ticker;
-          lookupMethod = "company_name";
           importResults.warnings.push(
             `Looked up ticker ${ticker} for company "${position.companyName}"`
           );
         } else {
+          // If ticker lookup fails, use company name as the "ticker" for now
+          ticker = position.companyName;
           importResults.warnings.push(
-            `Could not find ticker for company "${position.companyName}"`
+            `Could not find ticker for company "${position.companyName}", using name as identifier`
           );
-          importResults.errors++;
-          continue; // Skip this position
         }
       }
 
-      // Validate and get current price for the ticker
-      if (ticker) {
-        const stockData = await getYahooFinanceStockData(ticker);
-
-        if (stockData && stockData.price) {
-          currentPrice = stockData.price;
-
-          // If purchase price is missing or zero, use current price
-          if (!position.purchasePrice || position.purchasePrice === 0) {
-            position.purchasePrice = currentPrice;
-            importResults.warnings.push(
-              `Used current price for ${ticker} as purchase price was missing`
-            );
-          }
-
-          importResults.validPositions++;
-        } else {
-          importResults.warnings.push(`Could not validate ticker ${ticker}`);
-          // We'll still try to add the position with the data we have
-        }
-      } else {
-        importResults.warnings.push(
-          `Position missing both ticker and company name`
-        );
-        importResults.errors++;
-        continue; // Skip this position
-      }
-
+      // Skip the current price lookup entirely
       enrichedPositions.push({
         ticker,
         shares: position.shares,
         purchasePrice: position.purchasePrice,
         purchaseDate: position.purchaseDate,
-        currentPrice: currentPrice || position.purchasePrice,
-        notes:
-          position.notes +
-          (lookupMethod === "company_name"
-            ? ` (Ticker looked up from "${position.companyName}")`
-            : ""),
+        currentPrice: position.currentPrice, // Use purchase price as the initial current price
+        notes: position.notes,
       });
+
+      importResults.validPositions++;
     } catch (error) {
       console.error(
         `Error processing position ${position.ticker || position.companyName}:`,
@@ -932,7 +911,7 @@ async function enrichPositionsWithYahooFinance(
       importResults.errors++;
     }
   }
-
+  console.log("Enrichment results:", enrichedPositions, importResults);
   return { enrichedPositions, importResults };
 }
 
@@ -965,6 +944,10 @@ async function lookupTickerByCompanyName(
     });
 
     if (!response.ok) {
+      console.error(
+        "Error fetching data from Yahoo Finance:",
+        response.statusText
+      );
       throw new Error(`Yahoo Finance API returned status ${response.status}`);
     }
 
