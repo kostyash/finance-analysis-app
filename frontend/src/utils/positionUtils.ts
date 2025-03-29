@@ -29,6 +29,7 @@ export function transformPositionData(positionData: PositionData): Position {
  * Transforms an array of position data items to UI positions with calculated values
  */
 export function transformPositionsData(positionsData: PositionData[]): Position[] {
+  console.log('Position data:', positionsData); // Debug log
   return positionsData.map(transformPositionData);
 }
 
